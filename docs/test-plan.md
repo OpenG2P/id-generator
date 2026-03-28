@@ -16,14 +16,16 @@ No unit tests or mocking — we test the real service end-to-end through its HTT
 
 ## 2. Technology Stack
 
-| Component | Choice | Rationale |
-|-----------|--------|-----------|
-| Framework | `pytest` | Standard Python test framework; markers, parametrize, CLI selection |
-| HTTP Client | `httpx` (async) | Async HTTP calls; matches the async service |
-| Async support | `pytest-asyncio` | Run async test functions in pytest |
-| Reporting | `pytest-html` + custom plugin | HTML test report with version, timestamp, summary |
-| Timing | `pytest-benchmark` (or manual) | Response time measurements |
-| Config | CLI options + env vars | `--base-url`, `--namespace`, etc. |
+| Component | Choice | License | Rationale |
+|-----------|--------|---------|-----------|
+| Framework | `pytest` | MIT | Standard Python test framework; markers, parametrize, CLI selection |
+| HTTP Client | `httpx` (async) | BSD-3-Clause | Async HTTP calls; matches the async service |
+| Async support | `pytest-asyncio` | Apache 2.0 | Run async test functions in pytest |
+| Reporting | `pytest-html` + custom plugin | MPL 2.0 | HTML test report with version, timestamp, summary |
+| Timing | `pytest-benchmark` | Apache 2.0 | Response time measurements |
+| Config | CLI options + env vars | — | `--base-url`, `--namespace`, etc. |
+
+All components use **permissive open-source licenses**. No copyleft (GPL) dependencies.
 
 ---
 
