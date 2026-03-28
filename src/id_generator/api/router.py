@@ -138,7 +138,9 @@ async def health():
     if not is_startup_complete():
         return JSONResponse(
             status_code=503,
-            content=make_response({"status": "DOWN", "reason": "Startup not complete"}),
+            content=make_error_response(
+                "IDG-005", "Service not ready: startup not complete"
+            ),
         )
 
     try:
@@ -150,7 +152,9 @@ async def health():
     except Exception as e:
         return JSONResponse(
             status_code=503,
-            content=make_response({"status": "DOWN", "reason": str(e)}),
+            content=make_error_response(
+                "IDG-006", f"Database health check failed: {e}"
+            ),
         )
 
     return JSONResponse(

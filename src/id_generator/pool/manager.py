@@ -49,6 +49,8 @@ async def count_available(namespace: str) -> int:
 async def _insert_batch(namespace: str, ids: list[str]) -> int:
     """Insert a batch of IDs into the pool, skipping duplicates.
 
+    Uses parameterized queries to prevent SQL injection.
+
     Args:
         namespace: Target namespace.
         ids: List of ID strings to insert.
@@ -60,18 +62,22 @@ async def _insert_batch(namespace: str, ids: list[str]) -> int:
         return 0
 
     tbl = table_name(namespace)
-
-    # Build a multi-row VALUES clause
-    values_clause = ", ".join(f"('{id_val}')" for id_val in ids)
-    sql = text(
-        f"INSERT INTO {tbl} (id_value) VALUES {values_clause} "
-        f"ON CONFLICT DO NOTHING"
-    )
+    inserted = 0
 
     async with get_session() as session:
         async with session.begin():
-            result = await session.execute(sql)
-            return result.rowcount
+            # Use executemany with parameterized INSERT for safety
+            for id_val in ids:
+                result = await session.execute(
+                    text(
+                        f"INSERT INTO {tbl} (id_value) VALUES (:id_val) "
+                        f"ON CONFLICT DO NOTHING"
+                    ),
+                    {"id_val": id_val},
+                )
+                inserted += result.rowcount
+
+    return inserted
 
 
 async def fill_pool(namespace: str, settings: Settings) -> None:
@@ -105,9 +111,12 @@ async def fill_pool(namespace: str, settings: Settings) -> None:
 
         if ids:
             inserted = await _insert_batch(namespace, ids)
-            generated += inserted
+            # Track by number of IDs we attempted (not just inserted)
+            # to avoid infinite looping when most IDs are duplicates
+            generated += len(ids)
             logger.info(
-                "Namespace '%s': generated %d, inserted %d (total: %d/%d)",
+                "Namespace '%s': generated %d, inserted %d "
+                "(batch progress: %d/%d)",
                 namespace,
                 len(ids),
                 inserted,
@@ -202,7 +211,8 @@ async def check_and_replenish(namespace: str, settings: Settings) -> None:
     """Check pool level and replenish if below threshold.
 
     Uses PostgreSQL advisory locks to ensure only one pod generates
-    at a time per namespace.
+    at a time per namespace. The lock is held on a single session
+    throughout the entire generation process.
     """
     if is_exhausted(namespace):
         return
@@ -215,6 +225,8 @@ async def check_and_replenish(namespace: str, settings: Settings) -> None:
 
     lock_key = _advisory_lock_key(namespace)
 
+    # Use a single session for the entire lock lifecycle:
+    # acquire lock -> fill pool -> release lock
     async with get_session() as session:
         # Try to acquire advisory lock (non-blocking)
         result = await session.execute(
@@ -230,18 +242,17 @@ async def check_and_replenish(namespace: str, settings: Settings) -> None:
             )
             return
 
-    try:
-        logger.info(
-            "Namespace '%s': pool below threshold (%d < %d), "
-            "starting replenishment",
-            namespace,
-            available,
-            cfg.pool_min_threshold,
-        )
-        await fill_pool(namespace, settings)
-    finally:
-        # Release the advisory lock
-        async with get_session() as session:
+        try:
+            logger.info(
+                "Namespace '%s': pool below threshold (%d < %d), "
+                "starting replenishment",
+                namespace,
+                available,
+                cfg.pool_min_threshold,
+            )
+            await fill_pool(namespace, settings)
+        finally:
+            # Release the advisory lock on the SAME session
             await session.execute(
                 text(f"SELECT pg_advisory_unlock({lock_key})")
             )

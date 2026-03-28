@@ -9,14 +9,14 @@ from functools import lru_cache
 from pathlib import Path
 
 import yaml
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
 
 
 class NamespaceConfig(BaseModel):
     """Configuration for a single namespace."""
 
-    id_length: int
+    id_length: int = Field(ge=2, le=32, description="ID length (2-32 digits)")
 
 
 class IdGeneratorConfig(BaseModel):
