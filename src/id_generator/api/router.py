@@ -18,7 +18,7 @@ from fastapi.responses import JSONResponse
 from ..config import get_settings
 from ..generator.filters import check_all_filters
 from ..pool.issuer import PoolEmptyError, issue_one
-from ..pool.manager import is_exhausted, try_immediate_replenish
+from ..pool.manager import try_immediate_replenish
 from .schema import make_error_response, make_response
 
 router = APIRouter(prefix="/v1/idgenerator")
@@ -50,16 +50,9 @@ async def issue_id(namespace: Namespace):
             ),
         )
 
-    # Check if space is already known to be exhausted
-    if is_exhausted(namespace):
-        return JSONResponse(
-            status_code=410,
-            content=make_error_response(
-                "IDG-002",
-                f"ID space exhausted for namespace '{namespace}'",
-            ),
-        )
-
+    # Always try to issue first — there may be AVAILABLE IDs in the pool
+    # even if the generation space is exhausted (all valid IDs already
+    # generated but not yet taken).
     try:
         id_value = await issue_one(namespace)
         return JSONResponse(
@@ -67,12 +60,14 @@ async def issue_id(namespace: Namespace):
             content=make_response({"id": id_value}),
         )
     except PoolEmptyError:
-        # Pool is empty — try immediate replenishment
+        # Pool is empty — try immediate replenishment (only helps if
+        # generation space is not yet exhausted)
         settings = get_settings()
         replenished = await try_immediate_replenish(namespace, settings)
 
         if not replenished:
-            # Space is exhausted
+            # Generation space is exhausted AND pool is empty
+            # = all IDs have been taken
             return JSONResponse(
                 status_code=410,
                 content=make_error_response(
@@ -184,6 +179,35 @@ async def version():
                 "service_version": svc_version,
                 "build_time": build_time,
                 "git_commit": git_commit,
+            }
+        ),
+    )
+
+
+# -------------------------------------------------------------------------
+# GET /config - Service configuration (namespaces and filter rules)
+# -------------------------------------------------------------------------
+@router.get("/config")
+async def config():
+    """Return the active service configuration (namespaces, filter rules).
+
+    Useful for tests and diagnostics to discover configured namespaces
+    without hardcoding names.
+    """
+    settings = get_settings()
+    cfg = settings.id_generator
+
+    namespaces = {
+        name: {"id_length": ns.id_length}
+        for name, ns in cfg.namespaces.items()
+    }
+
+    return JSONResponse(
+        status_code=200,
+        content=make_response(
+            {
+                "namespaces": namespaces,
+                "filter_rules": cfg.get_filter_config(),
             }
         ),
     )

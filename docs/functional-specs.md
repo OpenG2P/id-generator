@@ -184,6 +184,7 @@ Invalid path parameters are rejected at the routing level with HTTP `422 Unproce
 | `GET` | `/v1/idgenerator/{namespace}/id/validate/{id}` | Validate an ID's structure (checksum + filter rules) | `200 OK` |
 | `GET` | `/v1/idgenerator/health` | Health check (DB connectivity) | `200 OK` |
 | `GET` | `/v1/idgenerator/version` | Returns service version, build info | `200 OK` |
+| `GET` | `/v1/idgenerator/config` | Returns active configuration (namespaces, filter rules) | `200 OK` |
 
 > **Note on `POST` for Issue ID**: Issuing an ID is a state-changing operation (AVAILABLE → TAKEN). Per HTTP/REST semantics, `GET` must be safe and idempotent. We use `POST` to correctly signal that this operation modifies state. No request body is required — the namespace is specified in the path.
 
@@ -273,6 +274,36 @@ Returns the service version and build metadata. Used by test frameworks and moni
 - `service_version`: Semantic version from `pyproject.toml`.
 - `build_time`: Timestamp when the Docker image was built (injected at build time).
 - `git_commit`: Short git commit hash (injected at build time).
+
+#### Config — `GET /v1/idgenerator/config`
+
+Returns the active service configuration including all configured namespaces and their ID lengths, plus the global filter rules. Useful for test frameworks and diagnostics to discover configured namespaces without hardcoding names.
+
+**Response (HTTP `200 OK`)**:
+```json
+{
+  "id": "mosip.idgenerator",
+  "version": "1.0",
+  "responsetime": "2026-03-28T10:00:00.000Z",
+  "response": {
+    "namespaces": {
+      "farmer_id": { "id_length": 10 },
+      "household_id": { "id_length": 10 }
+    },
+    "filter_rules": {
+      "sequence_limit": 3,
+      "repeating_limit": 2,
+      "repeating_block_limit": 2,
+      "conjugative_even_digits_limit": 3,
+      "digits_group_limit": 5,
+      "reverse_digits_group_limit": 5,
+      "not_start_with": ["0", "1"],
+      "restricted_numbers": []
+    }
+  },
+  "errors": []
+}
+```
 
 ### 8.5 HTTP Status Code Summary
 

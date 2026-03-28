@@ -77,10 +77,10 @@ pytest --html=report.html
 
 ```bash
 export IDGEN_BASE_URL=http://localhost:8000
-export IDGEN_TEST_NAMESPACE_1=test_ns_1
-export IDGEN_TEST_NAMESPACE_2=test_ns_2
 pytest
 ```
+
+> **Note**: Namespace names and ID lengths are **not** configured in the test framework. They are **auto-discovered** from the running service via `GET /v1/idgenerator/config` at the start of each test session. When you change namespaces in the service config, tests automatically adapt — no test configuration changes needed.
 
 ### 4.3 Pytest Markers
 
@@ -100,24 +100,34 @@ markers =
 
 ## 5. Test Prerequisites
 
-Before running the tests, the target ID Generator service must be configured with **two test namespaces** using a short ID length:
+Before running the tests, the target ID Generator service must be configured with **at least three namespaces**:
 
+- **Two namespaces with a small ID length** (e.g., 5 digits) — used for exhaustive tests that drain the entire ID space.
+- **One namespace with a larger ID length** (e.g., 10 digits) — used for performance and filter tests that need a large pool.
+
+Example configuration:
 ```yaml
-# Test-specific namespace config (added to service config)
 namespaces:
-  test_ns_1:
+  farmer_id:
     id_length: 5
-  test_ns_2:
+  household_id:
     id_length: 5
+  test_perf_ns:
+    id_length: 10
 ```
 
-**Why length 5?**
+The test framework **auto-discovers** namespace names and ID lengths from the service's `GET /v1/idgenerator/config` endpoint at session start. It then automatically selects:
+- `namespace_1`: The first namespace with the **smallest** `id_length` (for exhaustive tests).
+- `namespace_2`: The second namespace with the **smallest** `id_length` (for namespace independence tests).
+- `perf_namespace`: The namespace with the **largest** `id_length` (for performance and filter tests that require long IDs).
+
+**Why small ID length for exhaustive tests?**
 - 4 random digits + 1 Verhoeff checksum = 5-digit IDs.
 - With `not_start_with: [0, 1]`, the raw candidate space is 8,000 (8 × 10 × 10 × 10).
 - After all filters, the valid space is approximately 2,000–4,000 IDs (estimate).
 - This is small enough to exhaustively issue every ID via the API in a reasonable time.
 
-**Important**: These test namespaces should be **dedicated for testing** and not shared with production workloads. Running the exhaustive tests will consume all IDs in the namespace.
+**Important**: The small-ID-length namespaces should be **dedicated for testing** and not shared with production workloads. Running the exhaustive tests will consume all IDs in those namespaces.
 
 ---
 
@@ -127,12 +137,22 @@ namespaces:
 |---------|-------|-------------|
 | `base_url` | session | Service URL from CLI option or env var |
 | `client` | session | `httpx.AsyncClient` instance with base URL configured |
-| `namespace_1` | session | Name of first test namespace (default: `test_ns_1`) |
-| `namespace_2` | session | Name of second test namespace (default: `test_ns_2`) |
-| `issue_id(namespace)` | function | Helper: calls `POST` Issue ID API, returns the ID string |
-| `validate_id(namespace, id)` | function | Helper: calls `GET` Validate ID API, returns response |
-| `health_check()` | function | Helper: calls Health API, asserts healthy |
-| `service_version` | session | Fetches and caches version info from `/v1/idgenerator/version` at session start |
+| `service_config` | session | Fetches and caches config from `GET /v1/idgenerator/config` at session start |
+| `namespaces` | session | Dict of all configured namespaces (from `service_config`) |
+| `namespace_1` | session | Auto-selected: first namespace with smallest `id_length` |
+| `namespace_2` | session | Auto-selected: second namespace with smallest `id_length` |
+| `perf_namespace` | session | Auto-selected: namespace with largest `id_length` |
+| `ns1_id_length` | session | ID length configured for `namespace_1` |
+| `ns2_id_length` | session | ID length configured for `namespace_2` |
+| `perf_id_length` | session | ID length configured for `perf_namespace` |
+| `issue_id(client, namespace)` | session | Callable: `POST` Issue ID API, returns httpx response |
+| `validate_id(client, namespace, id)` | session | Callable: `GET` Validate ID API, returns httpx response |
+| `health_check(client)` | session | Callable: `GET` Health API, returns httpx response |
+| `service_version` | session | Fetches and caches version info from `GET /v1/idgenerator/version` at session start |
+| `ns1_issued_ids` | session | List collecting all IDs issued from `namespace_1` during exhaustive tests |
+| `ns2_issued_ids` | session | List collecting all IDs issued from `namespace_2` during exhaustive tests |
+| `ns1_exhausted` | session | Dict tracking whether `namespace_1` has been fully exhausted |
+| `ns2_exhausted` | session | Dict tracking whether `namespace_2` has been fully exhausted |
 
 ---
 

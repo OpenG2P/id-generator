@@ -23,9 +23,9 @@ class TestFLT001:
     """A correctly constructed ID passes the Validate API."""
 
     async def test_valid_id_passes_validation(
-        self, client, namespace_1, validate_id
+        self, client, namespace_1, ns1_id_length, validate_id
     ):
-        valid_id = construct_valid_id(5)
+        valid_id = construct_valid_id(ns1_id_length)
         resp = await validate_id(client, namespace_1, valid_id)
         assert resp.status_code == 200
 
@@ -42,9 +42,9 @@ class TestFLT002:
     """ID with incorrect Verhoeff checksum is rejected."""
 
     async def test_wrong_checksum_rejected(
-        self, client, namespace_1, validate_id
+        self, client, namespace_1, ns1_id_length, validate_id
     ):
-        bad_id = construct_id_failing_filter("wrong_checksum", 5)
+        bad_id = construct_id_failing_filter("wrong_checksum", ns1_id_length)
         resp = await validate_id(client, namespace_1, bad_id)
         assert resp.status_code == 200
 
@@ -59,9 +59,9 @@ class TestFLT003:
     """ID starting with '0' is rejected."""
 
     async def test_starts_with_zero_rejected(
-        self, client, namespace_1, validate_id
+        self, client, namespace_1, ns1_id_length, validate_id
     ):
-        bad_id = construct_id_failing_filter("not_start_with_zero", 5)
+        bad_id = construct_id_failing_filter("not_start_with_zero", ns1_id_length)
         resp = await validate_id(client, namespace_1, bad_id)
         assert resp.status_code == 200
 
@@ -76,9 +76,9 @@ class TestFLT004:
     """ID starting with '1' is rejected."""
 
     async def test_starts_with_one_rejected(
-        self, client, namespace_1, validate_id
+        self, client, namespace_1, ns1_id_length, validate_id
     ):
-        bad_id = construct_id_failing_filter("not_start_with_one", 5)
+        bad_id = construct_id_failing_filter("not_start_with_one", ns1_id_length)
         resp = await validate_id(client, namespace_1, bad_id)
         assert resp.status_code == 200
 
@@ -93,9 +93,9 @@ class TestFLT005:
     """ID with ascending sequence >= limit is rejected."""
 
     async def test_ascending_sequence_rejected(
-        self, client, namespace_1, validate_id
+        self, client, namespace_1, ns1_id_length, validate_id
     ):
-        bad_id = construct_id_failing_filter("sequence_asc", 5)
+        bad_id = construct_id_failing_filter("sequence_asc", ns1_id_length)
         resp = await validate_id(client, namespace_1, bad_id)
         assert resp.status_code == 200
 
@@ -112,9 +112,9 @@ class TestFLT006:
     """ID with descending sequence >= limit is rejected."""
 
     async def test_descending_sequence_rejected(
-        self, client, namespace_1, validate_id
+        self, client, namespace_1, ns1_id_length, validate_id
     ):
-        bad_id = construct_id_failing_filter("sequence_desc", 5)
+        bad_id = construct_id_failing_filter("sequence_desc", ns1_id_length)
         resp = await validate_id(client, namespace_1, bad_id)
         assert resp.status_code == 200
 
@@ -131,9 +131,9 @@ class TestFLT007:
     """ID with same digit repeating within limit distance is rejected."""
 
     async def test_repeating_digit_rejected(
-        self, client, namespace_1, validate_id
+        self, client, namespace_1, ns1_id_length, validate_id
     ):
-        bad_id = construct_id_failing_filter("repeating_digit", 5)
+        bad_id = construct_id_failing_filter("repeating_digit", ns1_id_length)
         resp = await validate_id(client, namespace_1, bad_id)
         assert resp.status_code == 200
 
@@ -148,9 +148,9 @@ class TestFLT008:
     """ID with repeated digit block is rejected."""
 
     async def test_repeating_block_rejected(
-        self, client, namespace_1, validate_id
+        self, client, namespace_1, ns1_id_length, validate_id
     ):
-        bad_id = construct_id_failing_filter("repeating_block", 5)
+        bad_id = construct_id_failing_filter("repeating_block", ns1_id_length)
         resp = await validate_id(client, namespace_1, bad_id)
         assert resp.status_code == 200
 
@@ -165,9 +165,9 @@ class TestFLT009:
     """ID with N+ consecutive even digits is rejected."""
 
     async def test_conjugative_even_digits_rejected(
-        self, client, namespace_1, validate_id
+        self, client, namespace_1, ns1_id_length, validate_id
     ):
-        bad_id = construct_id_failing_filter("conjugative_even", 5)
+        bad_id = construct_id_failing_filter("conjugative_even", ns1_id_length)
         resp = await validate_id(client, namespace_1, bad_id)
         assert resp.status_code == 200
 
@@ -184,9 +184,9 @@ class TestFLT010:
     requires ID length >= 10."""
 
     async def test_first_equals_last_rejected(
-        self, client, perf_namespace, validate_id
+        self, client, perf_namespace, perf_id_length, validate_id
     ):
-        bad_id = construct_id_failing_filter("first_equals_last", 10)
+        bad_id = construct_id_failing_filter("first_equals_last", perf_id_length)
         resp = await validate_id(client, perf_namespace, bad_id)
         assert resp.status_code == 200
 
@@ -202,10 +202,10 @@ class TestFLT011:
     Uses perf namespace (length=10)."""
 
     async def test_first_equals_reverse_last_rejected(
-        self, client, perf_namespace, validate_id
+        self, client, perf_namespace, perf_id_length, validate_id
     ):
         bad_id = construct_id_failing_filter(
-            "first_equals_reverse_last", 10
+            "first_equals_reverse_last", perf_id_length
         )
         resp = await validate_id(client, perf_namespace, bad_id)
         assert resp.status_code == 200
@@ -238,9 +238,9 @@ class TestFLT013:
     Uses perf namespace (length=10) since 142857 is 6 digits."""
 
     async def test_cyclic_number_rejected(
-        self, client, perf_namespace, validate_id
+        self, client, perf_namespace, perf_id_length, validate_id
     ):
-        bad_id = construct_id_failing_filter("cyclic", 10)
+        bad_id = construct_id_failing_filter("cyclic", perf_id_length)
         resp = await validate_id(client, perf_namespace, bad_id)
         assert resp.status_code == 200
 
@@ -257,18 +257,18 @@ class TestFLT014:
     """ID with wrong length for the namespace is rejected."""
 
     async def test_wrong_length_rejected(
-        self, client, namespace_1, validate_id
+        self, client, namespace_1, ns1_id_length, validate_id
     ):
-        # Submit a 4-digit ID to a 5-digit namespace
-        short_id = construct_valid_id(4)
+        # Submit an ID that is 1 digit shorter than expected
+        short_id = construct_valid_id(ns1_id_length - 1)
         resp = await validate_id(client, namespace_1, short_id)
         assert resp.status_code == 200
 
         body = resp.json()
         assert body["response"]["valid"] is False
 
-        # Also test a 6-digit ID
-        long_id = construct_valid_id(6)
+        # Also test an ID that is 1 digit longer than expected
+        long_id = construct_valid_id(ns1_id_length + 1)
         resp = await validate_id(client, namespace_1, long_id)
         assert resp.status_code == 200
 

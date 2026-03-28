@@ -54,7 +54,7 @@ id-generator/
 │       ├── db.py                # Async SQLAlchemy engine, session
 │       ├── models.py            # SQLAlchemy ORM model (id_pool table factory)
 │       ├── api/
-│       │   ├── router.py        # FastAPI routes
+│       │   ├── router.py        # FastAPI routes (issue, validate, health, version, config)
 │       │   └── schema.py        # Pydantic request/response models (MOSIP envelope)
 │       ├── generator/
 │       │   ├── engine.py        # Core ID generation (random + checksum)

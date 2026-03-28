@@ -96,6 +96,23 @@ To use a different config file:
 export CONFIG_PATH=/path/to/my-config.yaml
 ```
 
+### Changing Namespaces
+
+You can rename, add, or remove namespaces in the config at any time:
+
+- **Old namespace tables stay in the database** — no data is deleted. The
+  service simply stops serving requests for namespaces not in the config
+  (returns `IDG-003 Unknown namespace`).
+- **New namespaces** get their tables created and pools filled on the next
+  startup.
+- **Re-adding an old namespace** to the config will pick up its existing
+  table with all previously generated and issued IDs intact.
+- **To permanently delete** an old namespace's data, a DBA must manually
+  drop the table:
+  ```bash
+  psql -h localhost -U postgres -d idgenerator -c "DROP TABLE IF EXISTS id_pool_old_namespace;"
+  ```
+
 ---
 
 ## 4. Run the Service
@@ -116,10 +133,10 @@ uvicorn id_generator.main:app --host 0.0.0.0 --port 8000 --reload
 You should see logs like:
 ```
 INFO  id_generator.main: Initializing database engine...
-INFO  id_generator.main: Setting up namespace 'test_ns_1' (id_length=5)...
-INFO  id_generator.pool.manager: Namespace 'test_ns_1': 0 AVAILABLE IDs (threshold: 1000)
-INFO  id_generator.pool.manager: Namespace 'test_ns_1': generated 1000, inserted 1000 (total: 1000/5000)
-INFO  id_generator.pool.manager: Namespace 'test_ns_1': pool ready with 1000 AVAILABLE IDs
+INFO  id_generator.main: Setting up namespace 'farmer_id' (id_length=5)...
+INFO  id_generator.pool.manager: Namespace 'farmer_id': 0 AVAILABLE IDs (threshold: 1000)
+INFO  id_generator.pool.manager: Namespace 'farmer_id': generated 1000, inserted 1000 (...)
+INFO  id_generator.pool.manager: Namespace 'farmer_id': pool ready with 1000 AVAILABLE IDs
 ...
 INFO  id_generator.main: Startup complete. All namespace pools are ready.
 INFO  id_generator.main: Background pool replenishment started (interval: 30s)
@@ -143,16 +160,22 @@ curl http://localhost:8000/v1/idgenerator/health
 # Version
 curl http://localhost:8000/v1/idgenerator/version
 
-# Issue an ID
-curl -X POST http://localhost:8000/v1/idgenerator/test_ns_1/id
+# View configured namespaces
+curl http://localhost:8000/v1/idgenerator/config
 
-# Validate an ID (replace 57382 with an actual issued ID)
-curl http://localhost:8000/v1/idgenerator/test_ns_1/id/validate/57382
+# Issue an ID (replace farmer_id with your namespace name)
+curl -X POST http://localhost:8000/v1/idgenerator/farmer_id/id
+
+# Validate an ID (replace farmer_id and 57382 with actual values)
+curl http://localhost:8000/v1/idgenerator/farmer_id/id/validate/57382
 ```
 
 ---
 
 ## 6. Run Tests
+
+Tests **auto-discover** namespace names and ID lengths from the running service
+via `GET /v1/idgenerator/config`. No namespace names need to be specified.
 
 With the service running locally:
 
@@ -162,23 +185,27 @@ cd tests
 # Run all tests
 pytest --base-url=http://localhost:8000 --html=report.html --self-contained-html -v
 
+# Run against a remote service
+pytest --base-url=https://idgen.staging.example.com -v
+
 # Run only API contract tests (fast)
 pytest -m api_contract --base-url=http://localhost:8000 -v
 
 # Run only filter tests (fast, no IDs consumed)
 pytest -m filters --base-url=http://localhost:8000 -v
 
-# Run exhaustive tests (slow, consumes all IDs in test namespaces)
+# Run exhaustive tests (slow, consumes all IDs in small namespaces)
 pytest -m exhaustive --base-url=http://localhost:8000 -v
 ```
 
-**Important**: After running exhaustive tests, the `test_ns_1` and `test_ns_2`
-namespaces are fully consumed. To re-run them, reset the namespaces:
+**Important**: After running exhaustive tests, the two smallest-ID-length
+namespaces are fully consumed. To re-run them, drop their tables and restart:
 
 ```bash
-# Connect to PostgreSQL and drop the test tables
-psql -h localhost -U postgres -d idgenerator -c "DROP TABLE IF EXISTS id_pool_test_ns_1;"
-psql -h localhost -U postgres -d idgenerator -c "DROP TABLE IF EXISTS id_pool_test_ns_2;"
+# Connect to PostgreSQL and drop the exhausted tables
+# (replace farmer_id / household_id with your actual namespace names)
+psql -h localhost -U postgres -d idgenerator -c "DROP TABLE IF EXISTS id_pool_farmer_id;"
+psql -h localhost -U postgres -d idgenerator -c "DROP TABLE IF EXISTS id_pool_household_id;"
 
 # Restart the service (tables will be re-created and pools re-filled)
 ```

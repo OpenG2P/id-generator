@@ -147,18 +147,18 @@ class TestAPI006:
 # API-007: Issued ID has correct length
 # -------------------------------------------------------------------------
 class TestAPI007:
-    """Issued ID length matches namespace configuration (5 for test_ns_1)."""
+    """Issued ID length matches namespace configuration."""
 
     async def test_issued_id_correct_length(
-        self, client, namespace_1, issue_id
+        self, client, namespace_1, ns1_id_length, issue_id
     ):
         resp = await issue_id(client, namespace_1)
         assert resp.status_code == 200
 
         issued_id = resp.json()["response"]["id"]
-        # test_ns_1 is configured with id_length=5
-        assert len(issued_id) == 5, (
-            f"Expected length 5, got {len(issued_id)} for ID '{issued_id}'"
+        assert len(issued_id) == ns1_id_length, (
+            f"Expected length {ns1_id_length}, got {len(issued_id)} "
+            f"for ID '{issued_id}'"
         )
 
 
