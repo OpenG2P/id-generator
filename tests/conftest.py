@@ -111,13 +111,13 @@ def perf_id_type(id_types, id_type_1, id_type_2):
 
 
 @pytest.fixture(scope="session")
-def ns1_id_length(id_types, id_type_1):
+def id_type_1_length(id_types, id_type_1):
     """ID length configured for id_type_1."""
     return id_types[id_type_1]["id_length"]
 
 
 @pytest.fixture(scope="session")
-def ns2_id_length(id_types, id_type_2):
+def id_type_2_length(id_types, id_type_2):
     """ID length configured for id_type_2."""
     return id_types[id_type_2]["id_length"]
 
@@ -156,28 +156,28 @@ async def service_version(client):
 
 
 @pytest.fixture(scope="session")
-def ns1_issued_ids():
+def id_type_1_issued_ids():
     """List of all IDs issued from id_type_1, in issuance order.
     Populated by EXH-001."""
     return []
 
 
 @pytest.fixture(scope="session")
-def ns2_issued_ids():
+def id_type_2_issued_ids():
     """List of all IDs issued from id_type_2, in issuance order.
     Populated by EXH-002."""
     return []
 
 
 @pytest.fixture(scope="session")
-def ns1_exhausted():
+def id_type_1_exhausted():
     """Tracks whether id_type_1 has been fully exhausted.
     Set to True by EXH-001."""
     return {"exhausted": False}
 
 
 @pytest.fixture(scope="session")
-def ns2_exhausted():
+def id_type_2_exhausted():
     """Tracks whether id_type_2 has been fully exhausted.
     Set to True by EXH-002."""
     return {"exhausted": False}

@@ -82,7 +82,7 @@ export DB_PASSWORD=postgres
 ### Application Config
 
 The default configuration is in `config/default.yaml`. It includes three
-test ID types (`test_ns_1`, `test_ns_2`, `test_perf_ns`).
+ID types (`farmer_id`, `household_id`, `test_perf_ns`).
 
 To override any setting, either:
 - Edit `config/default.yaml` directly, or
@@ -126,7 +126,7 @@ uvicorn id_generator.main:app --host 0.0.0.0 --port 8000 --reload
 
 **First startup** will:
 1. Connect to PostgreSQL
-2. Create tables for each configured ID type (`id_pool_test_ns_1`, etc.)
+2. Create tables for each configured ID type (`id_pool_farmer_id`, etc.)
 3. Generate and insert IDs until each ID type has at least `pool_min_threshold` IDs
 4. Start accepting HTTP requests
 

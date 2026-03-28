@@ -19,7 +19,7 @@
   markers: [exhaustive, slow]
   file: test_exhaustive.py
   description: >
-    POST Issue IDs from test_ns_1 one at a time until space is exhausted
+    POST Issue IDs from farmer_id one at a time until space is exhausted
     (HTTP 410 / IDG-002). Collect all IDs. Assert no duplicates.
 
 - id: EXH-002
@@ -28,7 +28,7 @@
   markers: [exhaustive, slow]
   file: test_exhaustive.py
   description: >
-    Same as EXH-001 for test_ns_2. Verifies ID type isolation.
+    Same as EXH-001 for household_id. Verifies ID type isolation.
 
 - id: EXH-003
   name: test_ids_not_sequential_ns1
@@ -44,7 +44,7 @@
   markers: [exhaustive]
   file: test_exhaustive.py
   description: >
-    Same as EXH-003 for test_ns_2.
+    Same as EXH-003 for household_id.
 
 - id: EXH-005
   name: test_ids_not_clustered
@@ -70,7 +70,7 @@
   markers: [exhaustive]
   file: test_exhaustive.py
   description: >
-    Compare issuance order between test_ns_1 and test_ns_2. Assert the
+    Compare issuance order between farmer_id and household_id. Assert the
     orderings are different (independently randomized).
 
 - id: EXH-008
@@ -273,7 +273,7 @@
   markers: [exhaustion]
   file: test_exhaustion.py
   description: >
-    Exhaustion in test_ns_1 does not affect perf ID type. POST to
+    Exhaustion in farmer_id does not affect perf ID type. POST to
     perf ID type returns HTTP 200.
 
 - id: EXS-004
@@ -385,7 +385,7 @@
   markers: [api_contract]
   file: test_api_contract.py
   description: >
-    Issued ID length matches ID type config (5 for test_ns_1).
+    Issued ID length matches ID type config (5 for farmer_id).
 
 - id: API-008
   name: test_issued_id_passes_validation

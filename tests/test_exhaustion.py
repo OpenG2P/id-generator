@@ -3,7 +3,7 @@ Category 3: Space Exhaustion Tests (EXS-001 through EXS-004)
 
 Verify correct behavior when the ID space is fully consumed.
 These tests MUST run after the exhaustive tests (Phase 3) have
-drained test_ns_1 and test_ns_2.
+drained id_type_1 and id_type_2 (typically farmer_id and household_id).
 """
 
 import pytest
@@ -22,9 +22,9 @@ class TestEXS001:
     """After all IDs are consumed, POST returns HTTP 410 with IDG-002."""
 
     async def test_exhaustion_returns_error(
-        self, client, id_type_1, ns1_exhausted, issue_id
+        self, client, id_type_1, id_type_1_exhausted, issue_id
     ):
-        assert ns1_exhausted["exhausted"], (
+        assert id_type_1_exhausted["exhausted"], (
             "Precondition failed: EXH-001 must exhaust ID type first"
         )
 
@@ -46,9 +46,9 @@ class TestEXS002:
     """Exhaustion error persists on subsequent requests (not transient)."""
 
     async def test_exhaustion_error_is_permanent(
-        self, client, id_type_1, ns1_exhausted, issue_id
+        self, client, id_type_1, id_type_1_exhausted, issue_id
     ):
-        assert ns1_exhausted["exhausted"]
+        assert id_type_1_exhausted["exhausted"]
 
         # Call twice to verify it's still exhausted
         for _ in range(2):
@@ -65,10 +65,10 @@ class TestEXS003:
     Uses the perf ID type which has a large pool."""
 
     async def test_other_id_type_unaffected(
-        self, client, perf_id_type, ns1_exhausted, issue_id
+        self, client, perf_id_type, id_type_1_exhausted, issue_id
     ):
-        assert ns1_exhausted["exhausted"], (
-            "Precondition: test_ns_1 must be exhausted"
+        assert id_type_1_exhausted["exhausted"], (
+            "Precondition: id_type_1 must be exhausted"
         )
 
         # The perf ID type should still have IDs available
@@ -91,9 +91,9 @@ class TestEXS004:
     """Exhaustion error response matches the standard MOSIP envelope."""
 
     async def test_exhaustion_response_format(
-        self, client, id_type_1, ns1_exhausted, issue_id
+        self, client, id_type_1, id_type_1_exhausted, issue_id
     ):
-        assert ns1_exhausted["exhausted"]
+        assert id_type_1_exhausted["exhausted"]
 
         resp = await issue_id(client, id_type_1)
 

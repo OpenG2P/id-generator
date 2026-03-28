@@ -143,17 +143,17 @@ The test framework **auto-discovers** ID type names and ID lengths from the serv
 | `id_type_1` | session | Auto-selected: first ID type with smallest `id_length` |
 | `id_type_2` | session | Auto-selected: second ID type with smallest `id_length` |
 | `perf_id_type` | session | Auto-selected: ID type with largest `id_length` |
-| `ns1_id_length` | session | ID length configured for `id_type_1` |
-| `ns2_id_length` | session | ID length configured for `id_type_2` |
+| `id_type_1_length` | session | ID length configured for `id_type_1` |
+| `id_type_2_length` | session | ID length configured for `id_type_2` |
 | `perf_id_length` | session | ID length configured for `perf_id_type` |
 | `issue_id(client, id_type)` | session | Callable: `POST` Issue ID API, returns httpx response |
 | `validate_id(client, id_type, id)` | session | Callable: `GET` Validate ID API, returns httpx response |
 | `health_check(client)` | session | Callable: `GET` Health API, returns httpx response |
 | `service_version` | session | Fetches and caches version info from `GET /v1/idgenerator/version` at session start |
-| `ns1_issued_ids` | session | List collecting all IDs issued from `id_type_1` during exhaustive tests |
-| `ns2_issued_ids` | session | List collecting all IDs issued from `id_type_2` during exhaustive tests |
-| `ns1_exhausted` | session | Dict tracking whether `id_type_1` has been fully exhausted |
-| `ns2_exhausted` | session | Dict tracking whether `id_type_2` has been fully exhausted |
+| `id_type_1_issued_ids` | session | List collecting all IDs issued from `id_type_1` during exhaustive tests |
+| `id_type_2_issued_ids` | session | List collecting all IDs issued from `id_type_2` during exhaustive tests |
+| `id_type_1_exhausted` | session | Dict tracking whether `id_type_1` has been fully exhausted |
+| `id_type_2_exhausted` | session | Dict tracking whether `id_type_2` has been fully exhausted |
 
 ---
 
@@ -165,13 +165,13 @@ These tests issue **every possible ID** from a small-space ID type (length=5) an
 
 | # | Test ID | Test Name | Description | Marker |
 |---|---------|-----------|-------------|--------|
-| 1.1 | `EXH-001` | `test_all_ids_unique_ns1` | `POST` Issue IDs from `test_ns_1` one at a time until space is exhausted (HTTP `410`/`IDG-002`). Collect all IDs into a list. Assert: no duplicates (length of set == length of list). | `exhaustive`, `slow` |
-| 1.2 | `EXH-002` | `test_all_ids_unique_ns2` | Same as EXH-001 but for `test_ns_2`. Verifies ID type isolation — IDs are independently generated. | `exhaustive`, `slow` |
+| 1.1 | `EXH-001` | `test_all_ids_unique_ns1` | `POST` Issue IDs from `farmer_id` one at a time until space is exhausted (HTTP `410`/`IDG-002`). Collect all IDs into a list. Assert: no duplicates (length of set == length of list). | `exhaustive`, `slow` |
+| 1.2 | `EXH-002` | `test_all_ids_unique_ns2` | Same as EXH-001 but for `household_id`. Verifies ID type isolation — IDs are independently generated. | `exhaustive`, `slow` |
 | 1.3 | `EXH-003` | `test_ids_not_sequential_ns1` | Using the list from EXH-001: assert that IDs are NOT in ascending or descending numeric order. Compare the issued order with sorted order — they must differ. | `exhaustive` |
-| 1.4 | `EXH-004` | `test_ids_not_sequential_ns2` | Same as EXH-003 for `test_ns_2`. | `exhaustive` |
+| 1.4 | `EXH-004` | `test_ids_not_sequential_ns2` | Same as EXH-003 for `household_id`. | `exhaustive` |
 | 1.5 | `EXH-005` | `test_ids_not_clustered` | Using the list from EXH-001: convert IDs to integers, compute first-order differences (delta between consecutive IDs). Assert that deltas are not constant or near-constant (std deviation of deltas > threshold). | `exhaustive` |
 | 1.6 | `EXH-006` | `test_digit_distribution` | Across all issued IDs from EXH-001: for each middle digit position (excluding position 0 and the checksum digit), count frequency of each digit (0-9). Assert no single digit accounts for >50% of occurrences at any position. This catches gross generation bugs while tolerating the inherent bias from filter rules (no repeating digits, no sequences, no consecutive even digits). | `exhaustive` |
-| 1.7 | `EXH-007` | `test_id_type_independence` | Compare IDs issued to `test_ns_1` and `test_ns_2`. Assert: the **order** of issuance differs (since each ID type generates independently). The sets of IDs may overlap (same valid ID can exist in both ID types), but the issuance order must be different. | `exhaustive` |
+| 1.7 | `EXH-007` | `test_id_type_independence` | Compare IDs issued to `farmer_id` and `household_id`. Assert: the **order** of issuance differs (since each ID type generates independently). The sets of IDs may overlap (same valid ID can exist in both ID types), but the issuance order must be different. | `exhaustive` |
 | 1.8 | `EXH-008` | `test_total_count_within_expected_range` | Assert that the total number of IDs issued before exhaustion falls within a dynamically computed expected range based on `id_length`. Raw space = `8 * 10^(id_length - 2)`. Expected range: `[5% of raw_space, raw_space]`. Filters typically reduce the raw space to 15-60% depending on ID length and filter parameters. | `exhaustive` |
 
 ### Category 2: Filter Validation (`test_filters.py`)
@@ -207,9 +207,9 @@ These tests verify correct behavior when the ID space is fully consumed.
 
 | # | Test ID | Test Name | Description | Marker |
 |---|---------|-----------|-------------|--------|
-| 3.1 | `EXS-001` | `test_exhaustion_returns_error` | After EXH-001 has consumed all IDs in `test_ns_1`, `POST` one more Issue ID. Assert: HTTP `410 Gone`, error code `IDG-002` with appropriate message. | `exhaustion` |
+| 3.1 | `EXS-001` | `test_exhaustion_returns_error` | After EXH-001 has consumed all IDs in `farmer_id`, `POST` one more Issue ID. Assert: HTTP `410 Gone`, error code `IDG-002` with appropriate message. | `exhaustion` |
 | 3.2 | `EXS-002` | `test_exhaustion_error_is_permanent` | After EXS-001, `POST` another Issue ID from the same ID type. Assert: still HTTP `410`, `IDG-002` (not a transient error). | `exhaustion` |
-| 3.3 | `EXS-003` | `test_other_id_type_unaffected` | After `test_ns_1` is exhausted, `POST` Issue ID from `test_ns_2` (if not yet exhausted). Assert: HTTP `200`, succeeds normally. ID types are independent. | `exhaustion` |
+| 3.3 | `EXS-003` | `test_other_id_type_unaffected` | After `farmer_id` is exhausted, `POST` Issue ID from `household_id` (if not yet exhausted). Assert: HTTP `200`, succeeds normally. ID types are independent. | `exhaustion` |
 | 3.4 | `EXS-004` | `test_exhaustion_response_format` | Verify the exhaustion error response matches the standard MOSIP error envelope: HTTP `410`, `Content-Type: application/json`, `response` is `null`, `errors` array contains `errorCode` and `message`. | `exhaustion` |
 
 ### Category 4: Response Time (`test_performance.py`)
@@ -341,7 +341,7 @@ Phase 2: Filter validation tests (filters)
     → FLT-015 runs after exhaustive tests
 
 Phase 3: Exhaustive tests (exhaustive)
-    → Issues ALL IDs from ID types test_ns_1 and test_ns_2
+    → Issues ALL IDs from ID types farmer_id and household_id
     → Collects IDs into session-scoped fixtures for later use
     → This is the longest phase
 
@@ -453,8 +453,8 @@ IDs issued during exhaustive tests are stored in session-scoped pytest fixtures:
 
 ```python
 @pytest.fixture(scope="session")
-def ns1_issued_ids():
-    """Populated by EXH-001. List of all IDs issued from test_ns_1, in order."""
+def id_type_1_issued_ids():
+    """Populated by EXH-001. List of all IDs issued from id_type_1, in order."""
     return []
 ```
 
@@ -483,7 +483,7 @@ These helpers are **independent of the service code** — they are a second impl
 
 | Category | Test Count | Speed | Pool Impact |
 |----------|-----------|-------|-------------|
-| Exhaustive (uniqueness & randomness) | 8 | Slow (~minutes) | Consumes all IDs in test_ns_1, test_ns_2 |
+| Exhaustive (uniqueness & randomness) | 8 | Slow (~minutes) | Consumes all IDs in farmer_id, household_id |
 | Filters (validation rules) | 18 | Fast (seconds) | None (uses Validate API), except FLT-015 |
 | Exhaustion (error handling) | 4 | Fast (seconds) | Requires prior exhaustion |
 | Performance (response time) | 4 | Medium (~30s) | Consumes ~200 IDs from test_perf_ns |

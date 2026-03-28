@@ -4,8 +4,9 @@ Category 1: Exhaustive Uniqueness & Randomness Tests (EXH-001 through EXH-008)
 These tests issue EVERY possible ID from small-space ID types (length=5)
 and verify uniqueness, randomness, distribution, and ID type independence.
 
-WARNING: Running these tests permanently consumes all IDs in test_ns_1
-and test_ns_2. The ID types must be reset before re-running.
+WARNING: Running these tests permanently consumes all IDs in id_type_1
+and id_type_2 (typically farmer_id and household_id). The ID types must
+be reset (truncate tables) before re-running.
 """
 
 import asyncio
@@ -69,24 +70,24 @@ async def _drain_id_type(client, id_type, id_list, exhausted_flag):
 # EXH-001: All IDs unique in ID type 1
 # -------------------------------------------------------------------------
 class TestEXH001:
-    """Issue all IDs from test_ns_1. Assert no duplicates."""
+    """Issue all IDs from id_type_1. Assert no duplicates."""
 
     @pytest.mark.slow
     @pytest.mark.order(3.0)
     async def test_all_ids_unique_ns1(
-        self, client, id_type_1, ns1_issued_ids, ns1_exhausted
+        self, client, id_type_1, id_type_1_issued_ids, id_type_1_exhausted
     ):
         await _drain_id_type(
-            client, id_type_1, ns1_issued_ids, ns1_exhausted
+            client, id_type_1, id_type_1_issued_ids, id_type_1_exhausted
         )
 
-        assert ns1_exhausted["exhausted"], (
+        assert id_type_1_exhausted["exhausted"], (
             "ID type was not exhausted within the safety limit"
         )
-        assert len(ns1_issued_ids) > 0, "No IDs were issued"
+        assert len(id_type_1_issued_ids) > 0, "No IDs were issued"
 
-        unique_count = len(set(ns1_issued_ids))
-        total_count = len(ns1_issued_ids)
+        unique_count = len(set(id_type_1_issued_ids))
+        total_count = len(id_type_1_issued_ids)
 
         assert unique_count == total_count, (
             f"Duplicate IDs found! {total_count} issued but only "
@@ -99,22 +100,22 @@ class TestEXH001:
 # EXH-002: All IDs unique in ID type 2
 # -------------------------------------------------------------------------
 class TestEXH002:
-    """Issue all IDs from test_ns_2. Assert no duplicates."""
+    """Issue all IDs from id_type_2. Assert no duplicates."""
 
     @pytest.mark.slow
     @pytest.mark.order(3.0)
     async def test_all_ids_unique_ns2(
-        self, client, id_type_2, ns2_issued_ids, ns2_exhausted
+        self, client, id_type_2, id_type_2_issued_ids, id_type_2_exhausted
     ):
         await _drain_id_type(
-            client, id_type_2, ns2_issued_ids, ns2_exhausted
+            client, id_type_2, id_type_2_issued_ids, id_type_2_exhausted
         )
 
-        assert ns2_exhausted["exhausted"]
-        assert len(ns2_issued_ids) > 0
+        assert id_type_2_exhausted["exhausted"]
+        assert len(id_type_2_issued_ids) > 0
 
-        unique_count = len(set(ns2_issued_ids))
-        total_count = len(ns2_issued_ids)
+        unique_count = len(set(id_type_2_issued_ids))
+        total_count = len(id_type_2_issued_ids)
 
         assert unique_count == total_count, (
             f"Duplicate IDs found! {total_count} issued but only "
@@ -129,10 +130,10 @@ class TestEXH003:
     """Issued IDs are not in ascending or descending numeric order."""
 
     @pytest.mark.order(3.1)
-    async def test_ids_not_sequential_ns1(self, ns1_issued_ids):
-        assert len(ns1_issued_ids) > 0, "EXH-001 must run first"
+    async def test_ids_not_sequential_ns1(self, id_type_1_issued_ids):
+        assert len(id_type_1_issued_ids) > 0, "EXH-001 must run first"
 
-        int_ids = [int(x) for x in ns1_issued_ids]
+        int_ids = [int(x) for x in id_type_1_issued_ids]
         sorted_asc = sorted(int_ids)
         sorted_desc = sorted(int_ids, reverse=True)
 
@@ -151,10 +152,10 @@ class TestEXH004:
     """Issued IDs from ID type 2 are not sequentially ordered."""
 
     @pytest.mark.order(3.1)
-    async def test_ids_not_sequential_ns2(self, ns2_issued_ids):
-        assert len(ns2_issued_ids) > 0, "EXH-002 must run first"
+    async def test_ids_not_sequential_ns2(self, id_type_2_issued_ids):
+        assert len(id_type_2_issued_ids) > 0, "EXH-002 must run first"
 
-        int_ids = [int(x) for x in ns2_issued_ids]
+        int_ids = [int(x) for x in id_type_2_issued_ids]
         sorted_asc = sorted(int_ids)
         sorted_desc = sorted(int_ids, reverse=True)
 
@@ -170,10 +171,10 @@ class TestEXH005:
     constant), indicating randomized issuance order."""
 
     @pytest.mark.order(3.1)
-    async def test_ids_not_clustered(self, ns1_issued_ids):
-        assert len(ns1_issued_ids) > 10, "EXH-001 must run first"
+    async def test_ids_not_clustered(self, id_type_1_issued_ids):
+        assert len(id_type_1_issued_ids) > 10, "EXH-001 must run first"
 
-        int_ids = [int(x) for x in ns1_issued_ids]
+        int_ids = [int(x) for x in id_type_1_issued_ids]
         deltas = [
             abs(int_ids[i + 1] - int_ids[i])
             for i in range(len(int_ids) - 1)
@@ -206,18 +207,18 @@ class TestEXH006:
     """
 
     @pytest.mark.order(3.1)
-    async def test_digit_distribution(self, ns1_issued_ids):
-        assert len(ns1_issued_ids) > 100, "EXH-001 must run first"
+    async def test_digit_distribution(self, id_type_1_issued_ids):
+        assert len(id_type_1_issued_ids) > 100, "EXH-001 must run first"
 
-        total_ids = len(ns1_issued_ids)
-        id_length = len(ns1_issued_ids[0])
+        total_ids = len(id_type_1_issued_ids)
+        id_length = len(id_type_1_issued_ids[0])
 
         # Check digit distribution for middle positions
         # Position 0 is non-uniform (only 2-9 due to not_start_with)
         # Position id_length-1 is Verhoeff checksum (deterministic)
         for pos in range(1, id_length - 1):
             counts = [0] * 10
-            for id_str in ns1_issued_ids:
+            for id_str in id_type_1_issued_ids:
                 digit = int(id_str[pos])
                 counts[digit] += 1
 
@@ -244,17 +245,17 @@ class TestEXH007:
 
     @pytest.mark.order(3.1)
     async def test_id_type_independence(
-        self, ns1_issued_ids, ns2_issued_ids
+        self, id_type_1_issued_ids, id_type_2_issued_ids
     ):
-        assert len(ns1_issued_ids) > 0, "EXH-001 must run first"
-        assert len(ns2_issued_ids) > 0, "EXH-002 must run first"
+        assert len(id_type_1_issued_ids) > 0, "EXH-001 must run first"
+        assert len(id_type_2_issued_ids) > 0, "EXH-002 must run first"
 
         # Compare the issuance ORDER (not just the set of IDs)
-        min_len = min(len(ns1_issued_ids), len(ns2_issued_ids))
-        ns1_prefix = ns1_issued_ids[:min_len]
-        ns2_prefix = ns2_issued_ids[:min_len]
+        min_len = min(len(id_type_1_issued_ids), len(id_type_2_issued_ids))
+        prefix_1 = id_type_1_issued_ids[:min_len]
+        prefix_2 = id_type_2_issued_ids[:min_len]
 
-        assert ns1_prefix != ns2_prefix, (
+        assert prefix_1 != prefix_2, (
             "Both ID types issued IDs in the exact same order — "
             "they should be independently randomized"
         )
@@ -269,15 +270,15 @@ class TestEXH008:
 
     @pytest.mark.order(3.1)
     async def test_total_count_within_expected_range(
-        self, ns1_issued_ids, ns1_id_length
+        self, id_type_1_issued_ids, id_type_1_length
     ):
-        assert len(ns1_issued_ids) > 0, "EXH-001 must run first"
+        assert len(id_type_1_issued_ids) > 0, "EXH-001 must run first"
 
-        total = len(ns1_issued_ids)
+        total = len(id_type_1_issued_ids)
 
         # Raw space: first digit 2-9 (8 options) x remaining digits (10^N)
         # where N = id_length - 2 (one for checksum, one for first digit)
-        raw_space = 8 * (10 ** (ns1_id_length - 2))
+        raw_space = 8 * (10 ** (id_type_1_length - 2))
 
         # Filters reduce this significantly (typically 30-60% pass rate).
         # Use conservative bounds:
@@ -288,6 +289,6 @@ class TestEXH008:
 
         assert min_expected <= total <= max_expected, (
             f"Total IDs issued ({total}) outside expected range "
-            f"[{min_expected}, {max_expected}] for id_length={ns1_id_length} "
+            f"[{min_expected}, {max_expected}] for id_length={id_type_1_length} "
             f"(raw_space={raw_space})"
         )

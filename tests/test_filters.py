@@ -27,9 +27,9 @@ class TestFLT001:
     """A correctly constructed ID passes the Validate API."""
 
     async def test_valid_id_passes_validation(
-        self, client, id_type_1, ns1_id_length, validate_id
+        self, client, id_type_1, id_type_1_length, validate_id
     ):
-        valid_id = construct_valid_id(ns1_id_length)
+        valid_id = construct_valid_id(id_type_1_length)
         resp = await validate_id(client, id_type_1, valid_id)
         assert resp.status_code == 200
 
@@ -46,9 +46,9 @@ class TestFLT002:
     """ID with incorrect Verhoeff checksum is rejected."""
 
     async def test_wrong_checksum_rejected(
-        self, client, id_type_1, ns1_id_length, validate_id
+        self, client, id_type_1, id_type_1_length, validate_id
     ):
-        bad_id = construct_id_failing_filter("wrong_checksum", ns1_id_length)
+        bad_id = construct_id_failing_filter("wrong_checksum", id_type_1_length)
         resp = await validate_id(client, id_type_1, bad_id)
         assert resp.status_code == 200
 
@@ -63,9 +63,9 @@ class TestFLT003:
     """ID starting with '0' is rejected."""
 
     async def test_starts_with_zero_rejected(
-        self, client, id_type_1, ns1_id_length, validate_id
+        self, client, id_type_1, id_type_1_length, validate_id
     ):
-        bad_id = construct_id_failing_filter("not_start_with_zero", ns1_id_length)
+        bad_id = construct_id_failing_filter("not_start_with_zero", id_type_1_length)
         resp = await validate_id(client, id_type_1, bad_id)
         assert resp.status_code == 200
 
@@ -80,9 +80,9 @@ class TestFLT004:
     """ID starting with '1' is rejected."""
 
     async def test_starts_with_one_rejected(
-        self, client, id_type_1, ns1_id_length, validate_id
+        self, client, id_type_1, id_type_1_length, validate_id
     ):
-        bad_id = construct_id_failing_filter("not_start_with_one", ns1_id_length)
+        bad_id = construct_id_failing_filter("not_start_with_one", id_type_1_length)
         resp = await validate_id(client, id_type_1, bad_id)
         assert resp.status_code == 200
 
@@ -97,9 +97,9 @@ class TestFLT005:
     """ID with ascending sequence >= limit is rejected."""
 
     async def test_ascending_sequence_rejected(
-        self, client, id_type_1, ns1_id_length, validate_id
+        self, client, id_type_1, id_type_1_length, validate_id
     ):
-        bad_id = construct_id_failing_filter("sequence_asc", ns1_id_length)
+        bad_id = construct_id_failing_filter("sequence_asc", id_type_1_length)
         resp = await validate_id(client, id_type_1, bad_id)
         assert resp.status_code == 200
 
@@ -116,9 +116,9 @@ class TestFLT006:
     """ID with descending sequence >= limit is rejected."""
 
     async def test_descending_sequence_rejected(
-        self, client, id_type_1, ns1_id_length, validate_id
+        self, client, id_type_1, id_type_1_length, validate_id
     ):
-        bad_id = construct_id_failing_filter("sequence_desc", ns1_id_length)
+        bad_id = construct_id_failing_filter("sequence_desc", id_type_1_length)
         resp = await validate_id(client, id_type_1, bad_id)
         assert resp.status_code == 200
 
@@ -135,9 +135,9 @@ class TestFLT007:
     """ID with same digit repeating within limit distance is rejected."""
 
     async def test_repeating_digit_rejected(
-        self, client, id_type_1, ns1_id_length, validate_id
+        self, client, id_type_1, id_type_1_length, validate_id
     ):
-        bad_id = construct_id_failing_filter("repeating_digit", ns1_id_length)
+        bad_id = construct_id_failing_filter("repeating_digit", id_type_1_length)
         resp = await validate_id(client, id_type_1, bad_id)
         assert resp.status_code == 200
 
@@ -152,9 +152,9 @@ class TestFLT008:
     """ID with repeated digit block is rejected."""
 
     async def test_repeating_block_rejected(
-        self, client, id_type_1, ns1_id_length, validate_id
+        self, client, id_type_1, id_type_1_length, validate_id
     ):
-        bad_id = construct_id_failing_filter("repeating_block", ns1_id_length)
+        bad_id = construct_id_failing_filter("repeating_block", id_type_1_length)
         resp = await validate_id(client, id_type_1, bad_id)
         assert resp.status_code == 200
 
@@ -169,9 +169,9 @@ class TestFLT009:
     """ID with N+ consecutive even digits is rejected."""
 
     async def test_conjugative_even_digits_rejected(
-        self, client, id_type_1, ns1_id_length, validate_id
+        self, client, id_type_1, id_type_1_length, validate_id
     ):
-        bad_id = construct_id_failing_filter("conjugative_even", ns1_id_length)
+        bad_id = construct_id_failing_filter("conjugative_even", id_type_1_length)
         resp = await validate_id(client, id_type_1, bad_id)
         assert resp.status_code == 200
 
@@ -275,10 +275,10 @@ class TestFLT014:
     """ID with wrong length for the ID type is rejected."""
 
     async def test_wrong_length_rejected(
-        self, client, id_type_1, ns1_id_length, validate_id
+        self, client, id_type_1, id_type_1_length, validate_id
     ):
         # Submit an ID that is 1 digit shorter than expected
-        short_id = construct_valid_id(ns1_id_length - 1)
+        short_id = construct_valid_id(id_type_1_length - 1)
         resp = await validate_id(client, id_type_1, short_id)
         assert resp.status_code == 200
 
@@ -286,7 +286,7 @@ class TestFLT014:
         assert body["response"]["valid"] is False
 
         # Also test an ID that is 1 digit longer than expected
-        long_id = construct_valid_id(ns1_id_length + 1)
+        long_id = construct_valid_id(id_type_1_length + 1)
         resp = await validate_id(client, id_type_1, long_id)
         assert resp.status_code == 200
 
@@ -304,14 +304,14 @@ class TestFLT015:
     @pytest.mark.slow
     @pytest.mark.order(4)  # Must run after exhaustive tests (Phase 3)
     async def test_all_exhaustive_ids_pass_validation(
-        self, client, id_type_1, validate_id, ns1_issued_ids
+        self, client, id_type_1, validate_id, id_type_1_issued_ids
     ):
-        assert len(ns1_issued_ids) > 0, (
+        assert len(id_type_1_issued_ids) > 0, (
             "No IDs collected. EXH-001 must run before this test."
         )
 
         failures = []
-        for id_value in ns1_issued_ids:
+        for id_value in id_type_1_issued_ids:
             resp = await validate_id(client, id_type_1, id_value)
             assert resp.status_code == 200
             body = resp.json()

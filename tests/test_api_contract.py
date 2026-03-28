@@ -154,14 +154,14 @@ class TestAPI007:
     """Issued ID length matches ID type configuration."""
 
     async def test_issued_id_correct_length(
-        self, client, id_type_1, ns1_id_length, issue_id
+        self, client, id_type_1, id_type_1_length, issue_id
     ):
         resp = await issue_id(client, id_type_1)
         assert resp.status_code == 200
 
         issued_id = resp.json()["response"]["id"]
-        assert len(issued_id) == ns1_id_length, (
-            f"Expected length {ns1_id_length}, got {len(issued_id)} "
+        assert len(issued_id) == id_type_1_length, (
+            f"Expected length {id_type_1_length}, got {len(issued_id)} "
             f"for ID '{issued_id}'"
         )
 
