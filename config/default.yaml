@@ -22,5 +22,5 @@ id_generator:
       id_length: 6
     household_id:
       id_length: 6
-    test_perf_ns:
+    test_perf_id:
       id_length: 10

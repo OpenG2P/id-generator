@@ -82,7 +82,7 @@ export DB_PASSWORD=postgres
 ### Application Config
 
 The default configuration is in `config/default.yaml`. It includes three
-ID types (`farmer_id`, `household_id`, `test_perf_ns`).
+ID types (`farmer_id`, `household_id`, `test_perf_id`).
 
 To override any setting, either:
 - Edit `config/default.yaml` directly, or

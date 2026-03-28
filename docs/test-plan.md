@@ -113,7 +113,7 @@ id_types:
     id_length: 5
   household_id:
     id_length: 5
-  test_perf_ns:
+  test_perf_id:
     id_length: 10
 ```
 
@@ -214,7 +214,7 @@ These tests verify correct behavior when the ID space is fully consumed.
 
 ### Category 4: Response Time (`test_performance.py`)
 
-These tests measure API response latency. They should run against an ID type with a healthy pool (NOT the exhausted test ID types). Requires a separate ID type (e.g., `test_perf_ns`) with a larger ID length (e.g., 10) so the pool doesn't run out during testing.
+These tests measure API response latency. They should run against an ID type with a healthy pool (NOT the exhausted test ID types). Requires a separate ID type (e.g., `test_perf_id`) with a larger ID length (e.g., 10) so the pool doesn't run out during testing.
 
 | # | Test ID | Test Name | Description | Marker |
 |---|---------|-----------|-------------|--------|
@@ -350,7 +350,7 @@ Phase 4: Exhaustion tests (exhaustion)
     → Must run after exhaustive tests
 
 Phase 5: Performance tests (performance)
-    → Runs against a separate performance ID type (test_perf_ns)
+    → Runs against a separate performance ID type (test_perf_id)
     → Independent of other phases
 ```
 
@@ -486,6 +486,6 @@ These helpers are **independent of the service code** — they are a second impl
 | Exhaustive (uniqueness & randomness) | 8 | Slow (~minutes) | Consumes all IDs in farmer_id, household_id |
 | Filters (validation rules) | 18 | Fast (seconds) | None (uses Validate API), except FLT-015 |
 | Exhaustion (error handling) | 4 | Fast (seconds) | Requires prior exhaustion |
-| Performance (response time) | 4 | Medium (~30s) | Consumes ~200 IDs from test_perf_ns |
+| Performance (response time) | 4 | Medium (~30s) | Consumes ~200 IDs from test_perf_id |
 | API Contract (OpenAPI, HTTP status, format, errors, version) | 15 | Fast (seconds) | Consumes ~3 IDs |
 | **Total** | **49** | | |
