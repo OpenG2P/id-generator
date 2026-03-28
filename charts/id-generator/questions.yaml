@@ -1,0 +1,77 @@
+questions:
+
+# General
+- variable: global.idGeneratorHostname
+  description: Hostname under which the ID Generator service will be accessed
+  type: string
+  label: ID Generator Hostname
+  group: General
+
+- variable: global.postgresqlHost
+  description: PostgreSQL server host
+  type: string
+  label: PostgreSQL Server Host
+  group: General
+
+- variable: postgres-init.enabled
+  description: Run Postgres init to create database and user
+  type: boolean
+  label: Postgres Init
+  group: General
+
+- variable: idGenerator.enabled
+  description: Install ID Generator service
+  type: boolean
+  label: ID Generator
+  group: General
+
+# Database
+- variable: global.idGeneratorDB
+  description: Name of the ID Generator database
+  type: string
+  label: Database Name
+  group: Database
+
+- variable: global.idGeneratorDBUser
+  description: Database user name
+  type: string
+  label: Database User
+  group: Database
+
+- variable: global.idGeneratorDBSecret
+  description: Kubernetes secret holding database user password
+  type: string
+  label: Database Secret Name
+  group: Database
+
+- variable: global.idGeneratorDBUserPasswordKey
+  description: Key in above secret containing user password
+  type: string
+  label: Database Secret Password Key
+  group: Database
+
+# Image
+- variable: idGenerator.image.repository
+  description: Docker image repository for the ID Generator
+  type: string
+  label: Image Repository
+  group: Image
+
+- variable: idGenerator.image.tag
+  description: Docker image tag
+  type: string
+  label: Image Tag
+  group: Image
+
+# Scaling
+- variable: idGenerator.replicaCount
+  description: Number of replicas
+  type: int
+  label: Replica Count
+  group: Scaling
+
+- variable: idGenerator.autoscaling.enabled
+  description: Enable Horizontal Pod Autoscaler
+  type: boolean
+  label: Enable HPA
+  group: Scaling

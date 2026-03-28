@@ -1,0 +1,9 @@
+dependencies:
+- name: common
+  repository: https://openg2p.github.io/openg2p-helm
+  version: 2.30.0
+- name: postgres-init
+  repository: https://openg2p.github.io/openg2p-helm
+  version: 0.0.0-develop
+digest: sha256:da51c920ed3f951a130238ba5dcb56007842a5bdc285a789bebacc8e0a00ee9e
+generated: "2026-03-28T13:20:26.255034+05:30"

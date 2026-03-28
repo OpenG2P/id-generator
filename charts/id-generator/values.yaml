@@ -1,0 +1,138 @@
+global:
+  idGeneratorHostname: 'idgenerator.trial.openg2p.org'
+
+  # Database
+  postgresqlHost: commons-postgresql
+
+  idGeneratorDB: '{{ printf "%s" .Release.Name | replace "-" "_" }}'
+  idGeneratorDBPort: 5432
+  idGeneratorDBUser: '{{ printf "%s_user" .Release.Name | replace "-" "_" }}'
+  idGeneratorDBSecret: '{{ .Release.Name }}'
+  idGeneratorDBUserPasswordKey: '{{ .Release.Name }}-db-user'
+
+postgres-init:
+  enabled: true
+  postgresql:
+    host: '{{ .Values.global.postgresqlHost }}'
+    port: 5432
+    existingSecret: commons-postgresql
+    existingSecretPostgresPasswordKey: postgres-password
+  databases:
+    - name: '{{ tpl .Values.global.idGeneratorDB $ }}'
+      user: '{{ tpl .Values.global.idGeneratorDBUser $ }}'
+      secret: '{{ tpl .Values.global.idGeneratorDBSecret $ }}'
+      secretUserPasswordKey: '{{ tpl .Values.global.idGeneratorDBUserPasswordKey $ }}'
+
+idGenerator:
+  enabled: true
+  nameOverride: id-generator
+  hostname: '{{ tpl .Values.global.idGeneratorHostname $ }}'
+
+  replicaCount: 1
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+  updateStrategy:
+    type: RollingUpdate
+  serviceAccount:
+    create: false
+    name: ""
+  image:
+    repository: openg2p/openg2p-id-generator
+    tag: "develop"
+    pullPolicy: Always
+  podSecurityContext:
+    enabled: false
+    fsGroup: 1000
+  containerSecurityContext:
+    enabled: false
+    runAsUser: 1000
+    runAsNonRoot: true
+
+  service:
+    type: ClusterIP
+    port: 80
+    externalTrafficPolicy: Cluster
+
+  istio:
+    enabled: true
+    virtualservice:
+      enabled: true
+      host: '{{ tpl .Values.idGenerator.hostname $ }}'
+      gateway: "internal"
+      destination: '{{ .Release.Name }}-id-generator'
+      destinationPort: '{{ .Values.idGenerator.service.port }}'
+      prefix: /v1/idgenerator/
+      rewriteUri: ""
+    gateway:
+      enabled: false
+      host: '{{ tpl .Values.idGenerator.hostname $ }}'
+      ingressController:
+        istio: ingressgateway
+      httpTlsRedirect: false
+      httpEnabled: true
+      httpsEnabled: false
+      tls:
+        mode: SIMPLE
+        credentialName: ""
+
+  envVars:
+    DB_HOST: '{{ .Values.global.postgresqlHost }}'
+    DB_PORT: '{{ .Values.global.idGeneratorDBPort }}'
+    DB_NAME: '{{ tpl .Values.global.idGeneratorDB $ }}'
+    DB_USER: '{{ tpl .Values.global.idGeneratorDBUser $ }}'
+  envVarsFrom:
+    DB_PASSWORD:
+      secretKeyRef:
+        name: '{{ tpl .Values.global.idGeneratorDBSecret $ }}'
+        key: '{{ tpl .Values.global.idGeneratorDBUserPasswordKey $ }}'
+
+  startupProbe:
+    enabled: true
+    httpGet:
+      path: /v1/idgenerator/health
+      port: http
+    initialDelaySeconds: 0
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 30
+    successThreshold: 1
+  livenessProbe:
+    enabled: true
+    httpGet:
+      path: /v1/idgenerator/health
+      port: http
+    initialDelaySeconds: 20
+    periodSeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 6
+    successThreshold: 1
+  readinessProbe:
+    enabled: true
+    httpGet:
+      path: /v1/idgenerator/health
+      port: http
+    initialDelaySeconds: 0
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 6
+    successThreshold: 1
+
+  postgresCheckerInit:
+    enabled: true
+    image:
+      repository: jbergknoff/postgresql-client
+      tag: latest
+      pullPolicy: IfNotPresent
+    command:
+    - 'sh'
+    args:
+    - '-c'
+    - 'until pg_isready -U ${DB_USER} -h ${DB_HOST} -p ${DB_PORT:-5432} -d ${DB_NAME:-idgenerator}; do sleep 3; done'
+    containerSecurityContext:
+      enabled: false
+
+  containerPort: 8000
