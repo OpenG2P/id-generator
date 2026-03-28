@@ -127,9 +127,21 @@ No callback or confirmation from the calling service is required.
 
 ## 8. API Design
 
-Following MOSIP's response wrapper style, adapted with namespace support.
+Following MOSIP's response wrapper style, adapted with namespace support. All APIs are **OpenAPI 3.1 compliant**. All responses use `Content-Type: application/json`.
 
-### 8.1 Standard Response Envelope
+### 8.1 OpenAPI Specification
+
+FastAPI auto-generates a machine-readable OpenAPI spec and interactive documentation:
+
+| Path | Description |
+|------|-------------|
+| `GET /docs` | Swagger UI — interactive API explorer |
+| `GET /redoc` | ReDoc — alternative API documentation |
+| `GET /openapi.json` | Machine-readable OpenAPI 3.1 JSON spec |
+
+### 8.2 Standard Response Envelope
+
+All endpoints return a consistent MOSIP-style envelope with `Content-Type: application/json`.
 
 **Success**:
 ```json
@@ -155,20 +167,31 @@ Following MOSIP's response wrapper style, adapted with namespace support.
 }
 ```
 
-### 8.2 Endpoints
+### 8.3 Path Parameter Constraints
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/v1/idgenerator/{namespace}/id` | Issue one ID from the namespace pool |
-| `GET` | `/v1/idgenerator/{namespace}/id/validate/{id}` | Validate an ID's structure (checksum + filter rules) |
-| `GET` | `/v1/idgenerator/health` | Health check (DB connectivity) |
-| `GET` | `/v1/idgenerator/version` | Returns service version, build info |
+| Parameter | Type | Pattern | Description |
+|-----------|------|---------|-------------|
+| `{namespace}` | string | `^[a-z][a-z0-9_]{1,63}$` | Lowercase alphanumeric + underscore, starts with letter, max 64 chars |
+| `{id}` | string | `^\d{1,32}$` | Digits only, 1–32 characters |
 
-#### Issue ID — `GET /v1/idgenerator/{namespace}/id`
+Invalid path parameters are rejected at the routing level with HTTP `422 Unprocessable Entity`.
 
-Fetches a single AVAILABLE ID from the specified namespace pool and marks it as TAKEN.
+### 8.4 Endpoints
 
-**Response (success)**:
+| Method | Path | Description | Success HTTP Status |
+|--------|------|-------------|---------------------|
+| `POST` | `/v1/idgenerator/{namespace}/id` | Issue one ID from the namespace pool | `200 OK` |
+| `GET` | `/v1/idgenerator/{namespace}/id/validate/{id}` | Validate an ID's structure (checksum + filter rules) | `200 OK` |
+| `GET` | `/v1/idgenerator/health` | Health check (DB connectivity) | `200 OK` |
+| `GET` | `/v1/idgenerator/version` | Returns service version, build info | `200 OK` |
+
+> **Note on `POST` for Issue ID**: Issuing an ID is a state-changing operation (AVAILABLE → TAKEN). Per HTTP/REST semantics, `GET` must be safe and idempotent. We use `POST` to correctly signal that this operation modifies state. No request body is required — the namespace is specified in the path.
+
+#### Issue ID — `POST /v1/idgenerator/{namespace}/id`
+
+Issues a single AVAILABLE ID from the specified namespace pool and marks it as TAKEN. No request body required.
+
+**Response (HTTP `200 OK`)**:
 ```json
 {
   "id": "mosip.idgenerator",
@@ -181,6 +204,14 @@ Fetches a single AVAILABLE ID from the specified namespace pool and marks it as 
 }
 ```
 
+**Error responses**:
+
+| Condition | HTTP Status | Error Code |
+|-----------|-------------|------------|
+| Pool temporarily empty (replenishment in progress) | `503 Service Unavailable` | `IDG-001` |
+| ID space permanently exhausted | `410 Gone` | `IDG-002` |
+| Unknown namespace | `404 Not Found` | `IDG-003` |
+
 #### Validate ID — `GET /v1/idgenerator/{namespace}/id/validate/{id}`
 
 Validates whether a given ID is **structurally valid** for the specified namespace. This is a purely mathematical/structural check — it verifies:
@@ -191,7 +222,7 @@ It does **not** check whether the ID exists in the database or whether it is AVA
 
 **Use case**: A downstream system receives an ID (e.g., typed in by a user on a form) and wants to quickly verify it is not a typo or fabricated number — without needing a database lookup.
 
-**Response (success)**:
+**Response (HTTP `200 OK`)** — both valid and invalid IDs return 200; the result is in the body:
 ```json
 {
   "id": "mosip.idgenerator",
@@ -205,15 +236,26 @@ It does **not** check whether the ID exists in the database or whether it is AVA
 }
 ```
 
+**Error responses**:
+
+| Condition | HTTP Status | Error Code |
+|-----------|-------------|------------|
+| Unknown namespace | `404 Not Found` | `IDG-003` |
+
 #### Health Check — `GET /v1/idgenerator/health`
 
 Returns service health (DB connectivity ping). Used as Kubernetes readiness probe.
 
+| Condition | HTTP Status |
+|-----------|-------------|
+| Healthy (DB reachable, startup complete) | `200 OK` |
+| Unhealthy (DB unreachable or startup not complete) | `503 Service Unavailable` |
+
 #### Version — `GET /v1/idgenerator/version`
 
-Returns the service version and build metadata. Used by test frameworks and monitoring to identify which version is deployed.
+Returns the service version and build metadata. Used by test frameworks and monitoring to identify which version is deployed. Always returns `200 OK`.
 
-**Response**:
+**Response (HTTP `200 OK`)**:
 ```json
 {
   "id": "mosip.idgenerator",
@@ -232,14 +274,24 @@ Returns the service version and build metadata. Used by test frameworks and moni
 - `build_time`: Timestamp when the Docker image was built (injected at build time).
 - `git_commit`: Short git commit hash (injected at build time).
 
-### 8.3 Error Codes
+### 8.5 HTTP Status Code Summary
 
-| Code | Description |
-|------|-------------|
-| `IDG-001` | No IDs available in pool (temporary — replenishment in progress) |
-| `IDG-002` | ID space exhausted for namespace (permanent — no more IDs possible) |
-| `IDG-003` | Unknown namespace |
-| `IDG-004` | Invalid ID (validation endpoint) |
+| HTTP Status | Meaning | When Used |
+|-------------|---------|-----------|
+| `200 OK` | Request succeeded | Successful issue, validate, health, version |
+| `404 Not Found` | Resource not found | Unknown namespace (`IDG-003`) |
+| `410 Gone` | Resource permanently unavailable | ID space exhausted (`IDG-002`) |
+| `422 Unprocessable Entity` | Validation error | Invalid path parameter format |
+| `503 Service Unavailable` | Temporarily unavailable | Pool empty (`IDG-001`), health check failing |
+
+### 8.6 Error Codes
+
+| Code | HTTP Status | Description |
+|------|-------------|-------------|
+| `IDG-001` | `503` | No IDs available in pool (temporary — replenishment in progress) |
+| `IDG-002` | `410` | ID space exhausted for namespace (permanent — no more IDs possible) |
+| `IDG-003` | `404` | Unknown namespace |
+| `IDG-004` | — | Invalid ID (returned in validate response body, not as HTTP error) |
 
 ---
 

@@ -129,8 +129,8 @@ namespaces:
 | `client` | session | `httpx.AsyncClient` instance with base URL configured |
 | `namespace_1` | session | Name of first test namespace (default: `test_ns_1`) |
 | `namespace_2` | session | Name of second test namespace (default: `test_ns_2`) |
-| `issue_id(namespace)` | function | Helper: calls Issue ID API, returns the ID string |
-| `validate_id(namespace, id)` | function | Helper: calls Validate ID API, returns response |
+| `issue_id(namespace)` | function | Helper: calls `POST` Issue ID API, returns the ID string |
+| `validate_id(namespace, id)` | function | Helper: calls `GET` Validate ID API, returns response |
 | `health_check()` | function | Helper: calls Health API, asserts healthy |
 | `service_version` | session | Fetches and caches version info from `/v1/idgenerator/version` at session start |
 
@@ -144,7 +144,7 @@ These tests issue **every possible ID** from a small-space namespace (length=5) 
 
 | # | Test ID | Test Name | Description | Marker |
 |---|---------|-----------|-------------|--------|
-| 1.1 | `EXH-001` | `test_all_ids_unique_ns1` | Issue IDs from `test_ns_1` one at a time until space is exhausted (`IDG-001`/`IDG-002`). Collect all IDs into a list. Assert: no duplicates (length of set == length of list). | `exhaustive`, `slow` |
+| 1.1 | `EXH-001` | `test_all_ids_unique_ns1` | `POST` Issue IDs from `test_ns_1` one at a time until space is exhausted (HTTP `410`/`IDG-002`). Collect all IDs into a list. Assert: no duplicates (length of set == length of list). | `exhaustive`, `slow` |
 | 1.2 | `EXH-002` | `test_all_ids_unique_ns2` | Same as EXH-001 but for `test_ns_2`. Verifies namespace isolation — IDs are independently generated. | `exhaustive`, `slow` |
 | 1.3 | `EXH-003` | `test_ids_not_sequential_ns1` | Using the list from EXH-001: assert that IDs are NOT in ascending or descending numeric order. Compare the issued order with sorted order — they must differ. | `exhaustive` |
 | 1.4 | `EXH-004` | `test_ids_not_sequential_ns2` | Same as EXH-003 for `test_ns_2`. | `exhaustive` |
@@ -186,10 +186,10 @@ These tests verify correct behavior when the ID space is fully consumed.
 
 | # | Test ID | Test Name | Description | Marker |
 |---|---------|-----------|-------------|--------|
-| 3.1 | `EXS-001` | `test_exhaustion_returns_error` | After EXH-001 has consumed all IDs in `test_ns_1`, issue one more ID. Assert: response contains error code `IDG-002` with appropriate message. | `exhaustion` |
-| 3.2 | `EXS-002` | `test_exhaustion_error_is_permanent` | After EXS-001, issue another ID from the same namespace. Assert: still returns `IDG-002` (not a transient error). | `exhaustion` |
-| 3.3 | `EXS-003` | `test_other_namespace_unaffected` | After `test_ns_1` is exhausted, issue an ID from `test_ns_2` (if not yet exhausted). Assert: succeeds normally. Namespaces are independent. | `exhaustion` |
-| 3.4 | `EXS-004` | `test_exhaustion_response_format` | Verify the exhaustion error response matches the standard MOSIP error envelope: `response` is `null`, `errors` array contains `errorCode` and `message`. | `exhaustion` |
+| 3.1 | `EXS-001` | `test_exhaustion_returns_error` | After EXH-001 has consumed all IDs in `test_ns_1`, `POST` one more Issue ID. Assert: HTTP `410 Gone`, error code `IDG-002` with appropriate message. | `exhaustion` |
+| 3.2 | `EXS-002` | `test_exhaustion_error_is_permanent` | After EXS-001, `POST` another Issue ID from the same namespace. Assert: still HTTP `410`, `IDG-002` (not a transient error). | `exhaustion` |
+| 3.3 | `EXS-003` | `test_other_namespace_unaffected` | After `test_ns_1` is exhausted, `POST` Issue ID from `test_ns_2` (if not yet exhausted). Assert: HTTP `200`, succeeds normally. Namespaces are independent. | `exhaustion` |
+| 3.4 | `EXS-004` | `test_exhaustion_response_format` | Verify the exhaustion error response matches the standard MOSIP error envelope: HTTP `410`, `Content-Type: application/json`, `response` is `null`, `errors` array contains `errorCode` and `message`. | `exhaustion` |
 
 ### Category 4: Response Time (`test_performance.py`)
 
@@ -204,20 +204,25 @@ These tests measure API response latency. They should run against a namespace wi
 
 ### Category 5: API Contract (`test_api_contract.py`)
 
-These tests verify the API response structure, error codes, and edge cases.
+These tests verify OpenAPI compliance, HTTP status codes, response structure, error codes, and edge cases.
 
 | # | Test ID | Test Name | Description | Marker |
 |---|---------|-----------|-------------|--------|
-| 5.1 | `API-001` | `test_issue_response_envelope` | Issue an ID. Assert response has: `id`, `version`, `responsetime` (ISO format), `response.id` (string of digits), `errors` (empty list). | `api_contract` |
-| 5.2 | `API-002` | `test_validate_response_envelope` | Validate an ID. Assert response has: `id`, `version`, `responsetime`, `response.id`, `response.valid` (boolean), `errors`. | `api_contract` |
-| 5.3 | `API-003` | `test_unknown_namespace_returns_idg003` | Issue an ID from a non-existent namespace (e.g., `nonexistent_ns`). Assert: error code `IDG-003`. | `api_contract` |
-| 5.4 | `API-004` | `test_validate_unknown_namespace` | Validate an ID against a non-existent namespace. Assert: error code `IDG-003`. | `api_contract` |
-| 5.5 | `API-005` | `test_health_endpoint_returns_healthy` | Call health endpoint. Assert: HTTP 200, response indicates healthy. | `api_contract` |
-| 5.6 | `API-006` | `test_issued_id_is_numeric` | Issue an ID. Assert: the returned ID string contains only digits (regex `^\d+$`). | `api_contract` |
-| 5.7 | `API-007` | `test_issued_id_correct_length` | Issue an ID. Assert: length matches the namespace configuration. | `api_contract` |
-| 5.8 | `API-008` | `test_issued_id_passes_validation` | Issue an ID, then submit it to the Validate endpoint. Assert: `valid: true`. | `api_contract` |
-| 5.9 | `API-009` | `test_version_endpoint` | Call `GET /v1/idgenerator/version`. Assert: response contains `service_version` (semver format), `build_time`, `git_commit`. | `api_contract` |
+| 5.1 | `API-001` | `test_issue_response_envelope` | `POST` to Issue ID. Assert: HTTP `200`, `Content-Type: application/json`, response has `id`, `version`, `responsetime` (ISO 8601 format), `response.id` (string of digits), `errors` (empty list). | `api_contract` |
+| 5.2 | `API-002` | `test_validate_response_envelope` | `GET` Validate ID. Assert: HTTP `200`, `Content-Type: application/json`, response has `id`, `version`, `responsetime`, `response.id`, `response.valid` (boolean), `errors`. | `api_contract` |
+| 5.3 | `API-003` | `test_unknown_namespace_returns_404` | `POST` to Issue ID with a non-existent namespace. Assert: HTTP `404`, error code `IDG-003`, `response` is `null`. | `api_contract` |
+| 5.4 | `API-004` | `test_validate_unknown_namespace_returns_404` | `GET` Validate ID with a non-existent namespace. Assert: HTTP `404`, error code `IDG-003`. | `api_contract` |
+| 5.5 | `API-005` | `test_health_endpoint_returns_healthy` | `GET` Health. Assert: HTTP `200`, response indicates healthy. | `api_contract` |
+| 5.6 | `API-006` | `test_issued_id_is_numeric` | `POST` to Issue ID. Assert: the returned ID string contains only digits (regex `^\d+$`). | `api_contract` |
+| 5.7 | `API-007` | `test_issued_id_correct_length` | `POST` to Issue ID. Assert: length matches the namespace configuration. | `api_contract` |
+| 5.8 | `API-008` | `test_issued_id_passes_validation` | `POST` to Issue ID, then `GET` Validate. Assert: `valid: true`. | `api_contract` |
+| 5.9 | `API-009` | `test_version_endpoint` | `GET` Version. Assert: HTTP `200`, response contains `service_version` (semver format), `build_time`, `git_commit`. | `api_contract` |
 | 5.10 | `API-010` | `test_version_response_envelope` | Verify the version response follows the standard MOSIP envelope: `id`, `version`, `responsetime`, `response`, `errors`. | `api_contract` |
+| 5.11 | `API-011` | `test_issue_id_get_not_allowed` | `GET` (not `POST`) to Issue ID endpoint. Assert: HTTP `405 Method Not Allowed`. Confirms only `POST` is accepted. | `api_contract` |
+| 5.12 | `API-012` | `test_invalid_namespace_format_returns_422` | `POST` to Issue ID with an invalid namespace format (e.g., `123invalid`, `UPPER`, `ns with spaces`). Assert: HTTP `422 Unprocessable Entity`. | `api_contract` |
+| 5.13 | `API-013` | `test_invalid_id_format_returns_422` | `GET` Validate with an invalid ID format (e.g., `abc`, `12.34`). Assert: HTTP `422 Unprocessable Entity`. | `api_contract` |
+| 5.14 | `API-014` | `test_openapi_spec_available` | `GET /openapi.json`. Assert: HTTP `200`, response is valid JSON with `openapi` field starting with `3.`. | `api_contract` |
+| 5.15 | `API-015` | `test_content_type_json` | Call each endpoint. Assert: all responses include `Content-Type: application/json` header. | `api_contract` |
 
 ---
 
@@ -295,7 +300,7 @@ pytest --base-url=http://localhost:8000 --html=idgen-test-report-2026-03-28.html
 ║  Test Run:          2026-03-28T14:22:00.000Z             ║
 ║  Duration:          4m 18s                               ║
 ╠══════════════════════════════════════════════════════════╣
-║  TOTAL: 44  |  PASSED: 42  |  FAILED: 1  |  SKIPPED: 1  ║
+║  TOTAL: 49  |  PASSED: 47  |  FAILED: 1  |  SKIPPED: 1  ║
 ╚══════════════════════════════════════════════════════════╝
 ```
 
@@ -434,5 +439,5 @@ These helpers are **independent of the service code** — they are a second impl
 | Filters (validation rules) | 18 | Fast (seconds) | None (uses Validate API), except FLT-015 |
 | Exhaustion (error handling) | 4 | Fast (seconds) | Requires prior exhaustion |
 | Performance (response time) | 4 | Medium (~30s) | Consumes ~200 IDs from test_perf_ns |
-| API Contract (format, errors, version) | 10 | Fast (seconds) | Consumes ~3 IDs |
-| **Total** | **44** | | |
+| API Contract (OpenAPI, HTTP status, format, errors, version) | 15 | Fast (seconds) | Consumes ~3 IDs |
+| **Total** | **49** | | |
