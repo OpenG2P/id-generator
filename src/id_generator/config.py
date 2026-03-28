@@ -13,8 +13,8 @@ from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
 
 
-class NamespaceConfig(BaseModel):
-    """Configuration for a single namespace."""
+class IdTypeConfig(BaseModel):
+    """Configuration for a single ID type."""
 
     id_length: int = Field(ge=2, le=32, description="ID length (2-32 digits)")
 
@@ -39,8 +39,8 @@ class IdGeneratorConfig(BaseModel):
     exhaustion_max_attempts: int = 1000
     sub_batch_size: int = 10000
 
-    # Namespaces
-    namespaces: dict[str, NamespaceConfig] = {}
+    # ID types
+    id_types: dict[str, IdTypeConfig] = {}
 
     def get_filter_config(self) -> dict:
         """Return filter parameters as a plain dict for the filter functions."""

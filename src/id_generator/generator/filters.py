@@ -133,7 +133,7 @@ def check_all_filters(
 
     Args:
         id_str: The ID to validate.
-        id_length: Expected length for this namespace.
+        id_length: Expected length for this ID type.
         config: Dict with filter configuration keys.
 
     Returns:

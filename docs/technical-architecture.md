@@ -46,13 +46,13 @@ id-generator/
 ├── alembic/                     # DB migrations (schema structure only)
 │   └── versions/
 ├── config/
-│   └── default.yaml             # Default config (namespaces, filter params)
+│   └── default.yaml             # Default config (ID types, filter params)
 ├── src/
 │   └── id_generator/
 │       ├── main.py              # FastAPI app entry point
 │       ├── config.py            # Pydantic Settings (YAML + env vars)
 │       ├── db.py                # Async SQLAlchemy engine, session
-│       ├── models.py            # SQLAlchemy ORM model (id_pool table factory)
+│       ├── models.py            # SQLAlchemy ORM model (id_pool table factory per ID type)
 │       ├── api/
 │       │   ├── router.py        # FastAPI routes (issue, validate, health, version, config)
 │       │   └── schema.py        # Pydantic request/response models (MOSIP envelope)
@@ -72,33 +72,33 @@ id-generator/
 
 ## 3. Database Design
 
-### 3.1 Table-Per-Namespace Strategy
+### 3.1 Table-Per-ID-Type Strategy
 
-Each namespace gets its own table, auto-created on startup. No `namespace` column — the table name is the namespace.
+Each ID type gets its own table, auto-created on startup. No `id_type` column — the table name is the ID type.
 
 ```sql
--- Auto-created for each namespace on startup
-CREATE TABLE IF NOT EXISTS id_pool_{namespace} (
+-- Auto-created for each ID type on startup
+CREATE TABLE IF NOT EXISTS id_pool_{id_type} (
     id_value        VARCHAR(32)     PRIMARY KEY,
     status          VARCHAR(16)     NOT NULL DEFAULT 'AVAILABLE',
     created_at      TIMESTAMPTZ     NOT NULL DEFAULT now(),
     issued_at       TIMESTAMPTZ     NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_{namespace}_available
-    ON id_pool_{namespace} (status) WHERE status = 'AVAILABLE';
+CREATE INDEX IF NOT EXISTS idx_{id_type}_available
+    ON id_pool_{id_type} (status) WHERE status = 'AVAILABLE';
 ```
 
-### 3.2 Why Table-Per-Namespace (Not Single Table)
+### 3.2 Why Table-Per-ID-Type (Not Single Table)
 
-| Aspect | Single Table | Table-Per-Namespace (chosen) |
+| Aspect | Single Table | Table-Per-ID-Type (chosen) |
 |--------|--------------|------------------------------|
-| Query performance | All namespaces share one B-tree index. At 50M x N rows, index grows large. | Each table has its own smaller index. 50M rows per table is a PostgreSQL sweet spot. |
+| Query performance | All ID types share one B-tree index. At 50M x N rows, index grows large. | Each table has its own smaller index. 50M rows per table is a PostgreSQL sweet spot. |
 | Bulk insert | Inserting into a 200M+ row table — heavier index maintenance. | Inserting into a 50M row table — lighter index updates. |
-| VACUUM / maintenance | One large table to vacuum. Bloat accumulates across all namespaces. | Smaller tables vacuum faster. Can schedule maintenance per namespace independently. |
-| Dropping a namespace | `DELETE FROM id_pool WHERE namespace = :ns` — slow on 50M rows, generates WAL bloat. | `DROP TABLE id_pool_{ns}` — instant, clean. |
-| Adding a namespace | Just add rows to existing table. | `CREATE TABLE IF NOT EXISTS` on startup. |
-| Code complexity | Single model, namespace is a column. Simpler. | Dynamic table names at runtime. Slightly more complex but manageable via a table factory. |
+| VACUUM / maintenance | One large table to vacuum. Bloat accumulates across all ID types. | Smaller tables vacuum faster. Can schedule maintenance per ID type independently. |
+| Dropping an ID type | `DELETE FROM id_pool WHERE id_type = :ns` — slow on 50M rows, generates WAL bloat. | `DROP TABLE id_pool_{ns}` — instant, clean. |
+| Adding an ID type | Just add rows to existing table. | `CREATE TABLE IF NOT EXISTS` on startup. |
+| Code complexity | Single model, id_type is a column. Simpler. | Dynamic table names at runtime. Slightly more complex but manageable via a table factory. |
 
 ### 3.3 Database Connection
 
@@ -123,14 +123,14 @@ postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}
 
 ### 3.4 Table Lifecycle
 
-- **On startup**: For each namespace in config, run `CREATE TABLE IF NOT EXISTS` and `CREATE INDEX IF NOT EXISTS`. Existing tables are untouched. All previously generated and issued IDs are preserved.
-- **On namespace removal**: Table is left in place (orphaned but safe). Manual `DROP TABLE` by DBA if cleanup is needed.
-- **Namespace naming**: Validated against config (alphanumeric + underscore only) to prevent SQL injection in table names.
+- **On startup**: For each ID type in config, run `CREATE TABLE IF NOT EXISTS` and `CREATE INDEX IF NOT EXISTS`. Existing tables are untouched. All previously generated and issued IDs are preserved.
+- **On ID type removal**: Table is left in place (orphaned but safe). Manual `DROP TABLE` by DBA if cleanup is needed.
+- **ID type naming**: Validated against config (alphanumeric + underscore only) to prevent SQL injection in table names.
 
 ### 3.5 Schema Migrations
 
 - **Alembic** manages the schema structure (what columns the tables have).
-- **Table creation per namespace** is handled at app startup, not via Alembic migrations.
+- **Table creation per ID type** is handled at app startup, not via Alembic migrations.
 
 ---
 
@@ -142,13 +142,13 @@ This is the most performance-sensitive and concurrency-critical part.
 
 ```sql
 -- Atomic: select + lock in one step
-SELECT id_value FROM id_pool_{namespace}
+SELECT id_value FROM id_pool_{id_type}
 WHERE status = 'AVAILABLE'
 LIMIT 1
 FOR UPDATE SKIP LOCKED;
 
 -- Mark as taken
-UPDATE id_pool_{namespace}
+UPDATE id_pool_{id_type}
 SET status = 'TAKEN', issued_at = now()
 WHERE id_value = :id;
 ```
@@ -178,24 +178,24 @@ transaction and the pool replenishment insertion. The issuer includes retry logi
 Every pod runs a periodic background task (every 30 seconds, configurable via `pool_check_interval_seconds`):
 
 ```
-For each namespace in config:
-    1. COUNT(*) FROM id_pool_{namespace} WHERE status = 'AVAILABLE'
+For each ID type in config:
+    1. COUNT(*) FROM id_pool_{id_type} WHERE status = 'AVAILABLE'
     2. If count < pool_min_threshold:
-         Try: pg_try_advisory_lock(hash(namespace))
+         Try: pg_try_advisory_lock(hash(id_type))
          If lock acquired:
              Generate IDs in sub-batches (e.g., 100 rows per transaction)
-             Insert into id_pool_{namespace}
+             Insert into id_pool_{id_type}
              Release advisory lock
          If lock NOT acquired:
-             Skip — another pod is already generating for this namespace
+             Skip — another pod is already generating for this ID type
 ```
 
 ### 5.2 Why PostgreSQL Advisory Locks
 
-- **No leader election needed** — any pod can generate, but only one at a time per namespace.
+- **No leader election needed** — any pod can generate, but only one at a time per ID type.
 - **`pg_try_advisory_lock`** is non-blocking — if another pod holds the lock, we skip instantly (no waiting).
 - **Database is the coordinator** — no need for Redis, ZooKeeper, or K8s leader election.
-- **Per-namespace locks** — Pod A can generate for `social_id` while Pod B generates for `farmer_id` simultaneously.
+- **Per-ID-type locks** — Pod A can generate for `social_id` while Pod B generates for `farmer_id` simultaneously.
 
 ### 5.3 Alternatives Considered and Rejected
 
@@ -320,21 +320,21 @@ On application startup:
 
 ```
 1. Connect to PostgreSQL
-2. For each namespace in config:
-     a. CREATE TABLE IF NOT EXISTS id_pool_{namespace} (...)
-     b. CREATE INDEX IF NOT EXISTS idx_{namespace}_available (...)
+2. For each ID type in config:
+     a. CREATE TABLE IF NOT EXISTS id_pool_{id_type} (...)
+     b. CREATE INDEX IF NOT EXISTS idx_{id_type}_available (...)
      c. COUNT AVAILABLE IDs
      d. If count < pool_min_threshold:
           Generate IDs until threshold is met (blocking)
 3. Start FastAPI server (begin accepting requests)
 ```
 
-**The service blocks until all namespaces have their minimum pool generated.** This ensures no `IDG-001` errors immediately after deployment.
+**The service blocks until all ID types have their minimum pool generated.** This ensures no `IDG-001` errors immediately after deployment.
 
 Kubernetes implications:
 - **Readiness probe** should point to the `/v1/idgenerator/health` endpoint, which only returns healthy after startup is complete.
 - **Liveness probe** can be a simpler TCP check.
-- Initial startup for a new namespace may take time depending on `pool_min_threshold` and ID length. K8s `initialDelaySeconds` should be set accordingly.
+- Initial startup for a new ID type may take time depending on `pool_min_threshold` and ID length. K8s `initialDelaySeconds` should be set accordingly.
 
 ---
 
@@ -361,8 +361,8 @@ id_generator:
   pool_check_interval_seconds: 30    # How often to check pool levels
   exhaustion_max_attempts: 1000      # Random attempts before declaring exhaustion
 
-  # Namespaces
-  namespaces:
+  # ID types
+  id_types:
     social_id:
       id_length: 10
     farmer_id:
@@ -377,7 +377,7 @@ Pydantic Settings supports environment variable overrides with nested prefix not
 
 ```bash
 ID_GENERATOR__POOL_MIN_THRESHOLD=50000
-ID_GENERATOR__NAMESPACES__SOCIAL_ID__ID_LENGTH=12
+ID_GENERATOR__ID_TYPES__SOCIAL_ID__ID_LENGTH=12
 ```
 
 Environment variables take precedence over YAML values, enabling per-deployment customization without changing the config file.
@@ -431,9 +431,9 @@ Environment variables take precedence over YAML values, enabling per-deployment 
 | # | Decision | Choice | Rationale |
 |---|----------|--------|-----------|
 | 1 | Async stack | Full async (FastAPI + asyncpg + SQLAlchemy async) | I/O-bound workload, no thread pool overhead |
-| 2 | Table strategy | Table-per-namespace, auto-created on startup | Clean isolation, better vacuum/maintenance, instant DROP |
+| 2 | Table strategy | Table-per-id-type, auto-created on startup | Clean isolation, better vacuum/maintenance, instant DROP |
 | 3 | Issuing concurrency | `SELECT ... FOR UPDATE SKIP LOCKED` | Zero contention between pods |
-| 4 | Generation coordination | PostgreSQL advisory locks (`pg_try_advisory_lock`) | No external coordinator needed, per-namespace parallelism |
+| 4 | Generation coordination | PostgreSQL advisory locks (`pg_try_advisory_lock`) | No external coordinator needed, per-ID-type parallelism |
 | 5 | Bulk insert | Sub-batches (e.g., 100 rows per transaction) | Avoids long transactions, reduces WAL pressure |
 | 6 | Duplicate handling | `INSERT ... ON CONFLICT DO NOTHING` | Silently skips, no error handling needed |
 | 7 | Filter execution | In-memory, ordered cheapest-first, before DB insert | Fail fast, no wasted DB writes |

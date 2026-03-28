@@ -2,8 +2,8 @@
 FastAPI router with all API endpoints.
 
 Endpoints:
-  POST /{namespace}/id         - Issue one ID
-  GET  /{namespace}/id/validate/{id} - Validate an ID
+  POST /{id_type}/id         - Issue one ID
+  GET  /{id_type}/id/validate/{id} - Validate an ID
   GET  /health                 - Health check
   GET  /version                - Service version
 """
@@ -24,29 +24,29 @@ from .schema import make_error_response, make_response
 router = APIRouter(prefix="/v1/idgenerator")
 
 # Path parameter types with validation
-Namespace = Annotated[str, Path(pattern=r"^[a-z][a-z0-9_]{1,63}$")]
+IdType = Annotated[str, Path(pattern=r"^[a-z][a-z0-9_]{1,63}$")]
 IdParam = Annotated[str, Path(pattern=r"^\d{1,32}$")]
 
 
-def _get_namespace_config(namespace: str):
-    """Get namespace config or None if not configured."""
+def _get_id_type_config(id_type: str):
+    """Get ID type config or None if not configured."""
     settings = get_settings()
-    return settings.id_generator.namespaces.get(namespace)
+    return settings.id_generator.id_types.get(id_type)
 
 
 # -------------------------------------------------------------------------
-# POST /{namespace}/id - Issue ID
+# POST /{id_type}/id - Issue ID
 # -------------------------------------------------------------------------
-@router.post("/{namespace}/id")
-async def issue_id(namespace: Namespace):
-    """Issue a single ID from the specified namespace pool."""
-    ns_config = _get_namespace_config(namespace)
-    if ns_config is None:
+@router.post("/{id_type}/id")
+async def issue_id(id_type: IdType):
+    """Issue a single ID from the specified ID type pool."""
+    type_config = _get_id_type_config(id_type)
+    if type_config is None:
         return JSONResponse(
             status_code=404,
             content=make_error_response(
                 "IDG-003",
-                f"Unknown namespace '{namespace}'",
+                f"Unknown ID type '{id_type}'",
             ),
         )
 
@@ -54,7 +54,7 @@ async def issue_id(namespace: Namespace):
     # even if the generation space is exhausted (all valid IDs already
     # generated but not yet taken).
     try:
-        id_value = await issue_one(namespace)
+        id_value = await issue_one(id_type)
         return JSONResponse(
             status_code=200,
             content=make_response({"id": id_value}),
@@ -63,7 +63,7 @@ async def issue_id(namespace: Namespace):
         # Pool is empty — try immediate replenishment (only helps if
         # generation space is not yet exhausted)
         settings = get_settings()
-        replenished = await try_immediate_replenish(namespace, settings)
+        replenished = await try_immediate_replenish(id_type, settings)
 
         if not replenished:
             # Generation space is exhausted AND pool is empty
@@ -72,13 +72,13 @@ async def issue_id(namespace: Namespace):
                 status_code=410,
                 content=make_error_response(
                     "IDG-002",
-                    f"ID space exhausted for namespace '{namespace}'",
+                    f"ID space exhausted for ID type '{id_type}'",
                 ),
             )
 
         # Retry after replenishment
         try:
-            id_value = await issue_one(namespace)
+            id_value = await issue_one(id_type)
             return JSONResponse(
                 status_code=200,
                 content=make_response({"id": id_value}),
@@ -89,31 +89,31 @@ async def issue_id(namespace: Namespace):
                 status_code=503,
                 content=make_error_response(
                     "IDG-001",
-                    f"No IDs available for namespace '{namespace}'. "
+                    f"No IDs available for ID type '{id_type}'. "
                     f"Replenishment in progress.",
                 ),
             )
 
 
 # -------------------------------------------------------------------------
-# GET /{namespace}/id/validate/{id_value} - Validate ID
+# GET /{id_type}/id/validate/{id_value} - Validate ID
 # -------------------------------------------------------------------------
-@router.get("/{namespace}/id/validate/{id_value}")
-async def validate_id(namespace: Namespace, id_value: IdParam):
-    """Validate whether an ID is structurally valid for a namespace."""
-    ns_config = _get_namespace_config(namespace)
-    if ns_config is None:
+@router.get("/{id_type}/id/validate/{id_value}")
+async def validate_id(id_type: IdType, id_value: IdParam):
+    """Validate whether an ID is structurally valid for an ID type."""
+    type_config = _get_id_type_config(id_type)
+    if type_config is None:
         return JSONResponse(
             status_code=404,
             content=make_error_response(
                 "IDG-003",
-                f"Unknown namespace '{namespace}'",
+                f"Unknown ID type '{id_type}'",
             ),
         )
 
     settings = get_settings()
     filter_config = settings.id_generator.get_filter_config()
-    is_valid = check_all_filters(id_value, ns_config.id_length, filter_config)
+    is_valid = check_all_filters(id_value, type_config.id_length, filter_config)
 
     return JSONResponse(
         status_code=200,
@@ -185,28 +185,28 @@ async def version():
 
 
 # -------------------------------------------------------------------------
-# GET /config - Service configuration (namespaces and filter rules)
+# GET /config - Service configuration (ID types and filter rules)
 # -------------------------------------------------------------------------
 @router.get("/config")
 async def config():
-    """Return the active service configuration (namespaces, filter rules).
+    """Return the active service configuration (ID types, filter rules).
 
-    Useful for tests and diagnostics to discover configured namespaces
+    Useful for tests and diagnostics to discover configured ID types
     without hardcoding names.
     """
     settings = get_settings()
     cfg = settings.id_generator
 
-    namespaces = {
+    id_types = {
         name: {"id_length": ns.id_length}
-        for name, ns in cfg.namespaces.items()
+        for name, ns in cfg.id_types.items()
     }
 
     return JSONResponse(
         status_code=200,
         content=make_response(
             {
-                "namespaces": namespaces,
+                "id_types": id_types,
                 "filter_rules": cfg.get_filter_config(),
             }
         ),

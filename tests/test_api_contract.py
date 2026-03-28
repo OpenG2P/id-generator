@@ -25,9 +25,9 @@ class TestAPI001:
     """POST Issue ID returns correct MOSIP response envelope."""
 
     async def test_issue_response_envelope(
-        self, client, namespace_1, issue_id
+        self, client, id_type_1, issue_id
     ):
-        resp = await issue_id(client, namespace_1)
+        resp = await issue_id(client, id_type_1)
 
         assert resp.status_code == 200
         assert "application/json" in resp.headers.get("content-type", "")
@@ -59,13 +59,13 @@ class TestAPI002:
     """GET Validate ID returns correct response envelope."""
 
     async def test_validate_response_envelope(
-        self, client, namespace_1, issue_id, validate_id
+        self, client, id_type_1, issue_id, validate_id
     ):
         # First issue an ID to validate
-        issue_resp = await issue_id(client, namespace_1)
+        issue_resp = await issue_id(client, id_type_1)
         issued_id = issue_resp.json()["response"]["id"]
 
-        resp = await validate_id(client, namespace_1, issued_id)
+        resp = await validate_id(client, id_type_1, issued_id)
 
         assert resp.status_code == 200
         assert "application/json" in resp.headers.get("content-type", "")
@@ -84,13 +84,13 @@ class TestAPI002:
 
 
 # -------------------------------------------------------------------------
-# API-003: Unknown namespace returns 404 with IDG-003
+# API-003: Unknown ID type returns 404 with IDG-003
 # -------------------------------------------------------------------------
 class TestAPI003:
-    """POST to unknown namespace returns HTTP 404 with IDG-003."""
+    """POST to unknown ID type returns HTTP 404 with IDG-003."""
 
-    async def test_unknown_namespace_returns_404(self, client, issue_id):
-        resp = await issue_id(client, "nonexistent_namespace_xyz")
+    async def test_unknown_id_type_returns_404(self, client, issue_id):
+        resp = await issue_id(client, "nonexistent_id_type_xyz")
 
         assert resp.status_code == 404
 
@@ -101,16 +101,16 @@ class TestAPI003:
 
 
 # -------------------------------------------------------------------------
-# API-004: Validate with unknown namespace returns 404
+# API-004: Validate with unknown ID type returns 404
 # -------------------------------------------------------------------------
 class TestAPI004:
-    """GET Validate with unknown namespace returns HTTP 404 with IDG-003."""
+    """GET Validate with unknown ID type returns HTTP 404 with IDG-003."""
 
-    async def test_validate_unknown_namespace_returns_404(
+    async def test_validate_unknown_id_type_returns_404(
         self, client, validate_id
     ):
         resp = await validate_id(
-            client, "nonexistent_namespace_xyz", "12345"
+            client, "nonexistent_id_type_xyz", "12345"
         )
 
         assert resp.status_code == 404
@@ -139,8 +139,8 @@ class TestAPI005:
 class TestAPI006:
     """Issued ID contains only digits."""
 
-    async def test_issued_id_is_numeric(self, client, namespace_1, issue_id):
-        resp = await issue_id(client, namespace_1)
+    async def test_issued_id_is_numeric(self, client, id_type_1, issue_id):
+        resp = await issue_id(client, id_type_1)
         assert resp.status_code == 200
 
         issued_id = resp.json()["response"]["id"]
@@ -151,12 +151,12 @@ class TestAPI006:
 # API-007: Issued ID has correct length
 # -------------------------------------------------------------------------
 class TestAPI007:
-    """Issued ID length matches namespace configuration."""
+    """Issued ID length matches ID type configuration."""
 
     async def test_issued_id_correct_length(
-        self, client, namespace_1, ns1_id_length, issue_id
+        self, client, id_type_1, ns1_id_length, issue_id
     ):
-        resp = await issue_id(client, namespace_1)
+        resp = await issue_id(client, id_type_1)
         assert resp.status_code == 200
 
         issued_id = resp.json()["response"]["id"]
@@ -173,13 +173,13 @@ class TestAPI008:
     """An issued ID should pass the service's own validation endpoint."""
 
     async def test_issued_id_passes_validation(
-        self, client, namespace_1, issue_id, validate_id
+        self, client, id_type_1, issue_id, validate_id
     ):
-        issue_resp = await issue_id(client, namespace_1)
+        issue_resp = await issue_id(client, id_type_1)
         assert issue_resp.status_code == 200
         issued_id = issue_resp.json()["response"]["id"]
 
-        val_resp = await validate_id(client, namespace_1, issued_id)
+        val_resp = await validate_id(client, id_type_1, issued_id)
         assert val_resp.status_code == 200
 
         body = val_resp.json()
@@ -232,26 +232,26 @@ class TestAPI010:
 class TestAPI011:
     """GET (not POST) to Issue ID endpoint returns HTTP 405."""
 
-    async def test_issue_id_get_not_allowed(self, client, namespace_1):
-        resp = await client.get(f"/v1/idgenerator/{namespace_1}/id")
+    async def test_issue_id_get_not_allowed(self, client, id_type_1):
+        resp = await client.get(f"/v1/idgenerator/{id_type_1}/id")
         assert resp.status_code == 405
 
 
 # -------------------------------------------------------------------------
-# API-012: Invalid namespace format returns 422
+# API-012: Invalid ID type format returns 422
 # -------------------------------------------------------------------------
 class TestAPI012:
-    """POST with invalid namespace format returns HTTP 422."""
+    """POST with invalid ID type format returns HTTP 422."""
 
     @pytest.mark.parametrize(
-        "bad_namespace",
+        "bad_id_type",
         ["123invalid", "UPPER", "ns with spaces"],
         ids=["starts-with-digit", "uppercase", "contains-space"],
     )
-    async def test_invalid_namespace_format_returns_422(
-        self, client, bad_namespace
+    async def test_invalid_id_type_format_returns_422(
+        self, client, bad_id_type
     ):
-        resp = await client.post(f"/v1/idgenerator/{bad_namespace}/id")
+        resp = await client.post(f"/v1/idgenerator/{bad_id_type}/id")
         assert resp.status_code == 422
 
 
@@ -267,10 +267,10 @@ class TestAPI013:
         ids=["alphabetic", "decimal", "spaces"],
     )
     async def test_invalid_id_format_returns_422(
-        self, client, namespace_1, bad_id
+        self, client, id_type_1, bad_id
     ):
         resp = await client.get(
-            f"/v1/idgenerator/{namespace_1}/id/validate/{bad_id}"
+            f"/v1/idgenerator/{id_type_1}/id/validate/{bad_id}"
         )
         assert resp.status_code == 422
 
@@ -297,10 +297,10 @@ class TestAPI015:
     """All endpoints return Content-Type: application/json."""
 
     async def test_content_type_json(
-        self, client, namespace_1, issue_id, validate_id, health_check
+        self, client, id_type_1, issue_id, validate_id, health_check
     ):
         # Issue ID
-        resp = await issue_id(client, namespace_1)
+        resp = await issue_id(client, id_type_1)
         assert "application/json" in resp.headers.get("content-type", ""), (
             "Issue ID missing application/json content-type"
         )
@@ -308,7 +308,7 @@ class TestAPI015:
         issued_id = resp.json()["response"]["id"]
 
         # Validate ID
-        resp = await validate_id(client, namespace_1, issued_id)
+        resp = await validate_id(client, id_type_1, issued_id)
         assert "application/json" in resp.headers.get("content-type", ""), (
             "Validate ID missing application/json content-type"
         )

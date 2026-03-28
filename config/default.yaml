@@ -16,8 +16,8 @@ id_generator:
   exhaustion_max_attempts: 1000
   sub_batch_size: 10000
 
-  # Namespaces (add/remove here, restart pods to apply)
-  namespaces:
+  # ID types (add/remove here, restart pods to apply)
+  id_types:
     farmer_id:
       id_length: 6
     household_id:

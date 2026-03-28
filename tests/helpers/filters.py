@@ -291,7 +291,7 @@ def construct_id_failing_filter(
             "conjugative_even", "first_equals_last",
             "first_equals_reverse_last", "restricted", "cyclic",
             "wrong_checksum", "wrong_length".
-        length: The target namespace ID length.
+        length: The target ID type's ID length.
         config: Filter configuration. Defaults to DEFAULT_CONFIG.
 
     Returns:

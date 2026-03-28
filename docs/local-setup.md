@@ -82,7 +82,7 @@ export DB_PASSWORD=postgres
 ### Application Config
 
 The default configuration is in `config/default.yaml`. It includes three
-test namespaces (`test_ns_1`, `test_ns_2`, `test_perf_ns`).
+test ID types (`test_ns_1`, `test_ns_2`, `test_perf_ns`).
 
 To override any setting, either:
 - Edit `config/default.yaml` directly, or
@@ -96,21 +96,21 @@ To use a different config file:
 export CONFIG_PATH=/path/to/my-config.yaml
 ```
 
-### Changing Namespaces
+### Changing ID Types
 
-You can rename, add, or remove namespaces in the config at any time:
+You can rename, add, or remove ID types in the config at any time:
 
-- **Old namespace tables stay in the database** — no data is deleted. The
-  service simply stops serving requests for namespaces not in the config
-  (returns `IDG-003 Unknown namespace`).
-- **New namespaces** get their tables created and pools filled on the next
+- **Old ID type tables stay in the database** — no data is deleted. The
+  service simply stops serving requests for ID types not in the config
+  (returns `IDG-003 Unknown ID type`).
+- **New ID types** get their tables created and pools filled on the next
   startup.
-- **Re-adding an old namespace** to the config will pick up its existing
+- **Re-adding an old ID type** to the config will pick up its existing
   table with all previously generated and issued IDs intact.
-- **To permanently delete** an old namespace's data, a DBA must manually
+- **To permanently delete** an old ID type's data, a DBA must manually
   drop the table:
   ```bash
-  psql -h localhost -U postgres -d idgenerator -c "DROP TABLE IF EXISTS id_pool_old_namespace;"
+  psql -h localhost -U postgres -d idgenerator -c "DROP TABLE IF EXISTS id_pool_old_id_type;"
   ```
 
 ---
@@ -126,19 +126,19 @@ uvicorn id_generator.main:app --host 0.0.0.0 --port 8000 --reload
 
 **First startup** will:
 1. Connect to PostgreSQL
-2. Create tables for each configured namespace (`id_pool_test_ns_1`, etc.)
-3. Generate and insert IDs until each namespace has at least `pool_min_threshold` IDs
+2. Create tables for each configured ID type (`id_pool_test_ns_1`, etc.)
+3. Generate and insert IDs until each ID type has at least `pool_min_threshold` IDs
 4. Start accepting HTTP requests
 
 You should see logs like:
 ```
 INFO  id_generator.main: Initializing database engine...
-INFO  id_generator.main: Setting up namespace 'farmer_id' (id_length=5)...
-INFO  id_generator.pool.manager: Namespace 'farmer_id': 0 AVAILABLE IDs (threshold: 1000)
-INFO  id_generator.pool.manager: Namespace 'farmer_id': generated 1000, inserted 1000 (...)
-INFO  id_generator.pool.manager: Namespace 'farmer_id': pool ready with 1000 AVAILABLE IDs
+INFO  id_generator.main: Setting up ID type 'farmer_id' (id_length=5)...
+INFO  id_generator.pool.manager: ID type 'farmer_id': 0 AVAILABLE IDs (threshold: 1000)
+INFO  id_generator.pool.manager: ID type 'farmer_id': generated 1000, inserted 1000 (...)
+INFO  id_generator.pool.manager: ID type 'farmer_id': pool ready with 1000 AVAILABLE IDs
 ...
-INFO  id_generator.main: Startup complete. All namespace pools are ready.
+INFO  id_generator.main: Startup complete. All ID type pools are ready.
 INFO  id_generator.main: Background pool replenishment started (interval: 30s)
 INFO:     Uvicorn running on http://0.0.0.0:8000
 ```
@@ -160,10 +160,10 @@ curl http://localhost:8000/v1/idgenerator/health
 # Version
 curl http://localhost:8000/v1/idgenerator/version
 
-# View configured namespaces
+# View configured ID types
 curl http://localhost:8000/v1/idgenerator/config
 
-# Issue an ID (replace farmer_id with your namespace name)
+# Issue an ID (replace farmer_id with your ID type name)
 curl -X POST http://localhost:8000/v1/idgenerator/farmer_id/id
 
 # Validate an ID (replace farmer_id and 57382 with actual values)
@@ -174,8 +174,8 @@ curl http://localhost:8000/v1/idgenerator/farmer_id/id/validate/57382
 
 ## 6. Run Tests
 
-Tests **auto-discover** namespace names and ID lengths from the running service
-via `GET /v1/idgenerator/config`. No namespace names need to be specified.
+Tests **auto-discover** ID type names and ID lengths from the running service
+via `GET /v1/idgenerator/config`. No ID type names need to be specified.
 
 With the service running locally:
 
@@ -208,28 +208,28 @@ pytest -m exhaustion --base-url=http://localhost:8000 -v      # Post-exhaustion 
 |-------|----------|--------|-------------|
 | 1 | API Contract | `api_contract` | Response envelope, HTTP status codes, error codes, OpenAPI |
 | 2 | Filters | `filters` | Validate API correctly accepts/rejects IDs per filter rules |
-| 3 | Exhaustive | `exhaustive` | Drain all IDs from small namespaces, verify uniqueness & randomness |
+| 3 | Exhaustive | `exhaustive` | Drain all IDs from small ID types, verify uniqueness & randomness |
 | 4 | Exhaustion | `exhaustion` | Verify correct IDG-002 errors after space is fully consumed |
 | 5 | Performance | `performance` | Response time percentiles (p50, p95, p99) |
 
 ### Notes on skipped tests
 
 - **FLT-010/FLT-011** (first-equals-last, first-equals-reverse-last): Skipped when
-  the largest namespace's `id_length` is less than `2 * digits_group_limit + 1`.
+  the largest ID type's `id_length` is less than `2 * digits_group_limit + 1`.
   With default `digits_group_limit=5`, this requires `id_length >= 11`. Configure
-  a namespace with `id_length: 12` to enable these tests.
+  an ID type with `id_length: 12` to enable these tests.
 - **FLT-012** (restricted numbers): Skipped when `restricted_numbers` is empty in config.
 - **FLT-015** (cross-validate exhaustive IDs): Only meaningful when run after
   exhaustive tests (Phase 3). Skips with a message if no IDs were collected.
 
 ### Resetting after exhaustive tests
 
-After running exhaustive tests, the two smallest-ID-length namespaces are fully
+After running exhaustive tests, the two smallest-ID-length ID types are fully
 consumed. To re-run them, drop their tables and restart:
 
 ```bash
 # Connect to PostgreSQL and drop the exhausted tables
-# (replace farmer_id / household_id with your actual namespace names)
+# (replace farmer_id / household_id with your actual ID type names)
 psql -h localhost -U postgres -d idgenerator -c "DROP TABLE IF EXISTS id_pool_farmer_id;"
 psql -h localhost -U postgres -d idgenerator -c "DROP TABLE IF EXISTS id_pool_household_id;"
 
@@ -254,7 +254,7 @@ id-generator/
 │       ├── main.py              # FastAPI app entry point
 │       ├── config.py            # Settings (YAML + env vars)
 │       ├── db.py                # Async SQLAlchemy engine
-│       ├── models.py            # Table creation (table-per-namespace)
+│       ├── models.py            # Table creation (table-per-id-type)
 │       ├── api/
 │       │   ├── router.py        # API endpoints
 │       │   └── schema.py        # MOSIP response envelope
@@ -300,7 +300,7 @@ the nested delimiter:
 ```bash
 export ID_GENERATOR__POOL_MIN_THRESHOLD=500
 export ID_GENERATOR__SEQUENCE_LIMIT=4
-export ID_GENERATOR__NAMESPACES__SOCIAL_ID__ID_LENGTH=10
+export ID_GENERATOR__ID_TYPES__SOCIAL_ID__ID_LENGTH=10
 ```
 
 ---
@@ -368,7 +368,7 @@ Check that PostgreSQL is running and the `DB_*` environment variables are set
 correctly.
 
 ### Startup takes too long
-For namespaces with large ID lengths (e.g., 10+ digits) and high
+For ID types with large ID lengths (e.g., 10+ digits) and high
 `pool_min_threshold`, the initial pool generation can take time. Reduce
 `pool_min_threshold` for faster development iteration.
 

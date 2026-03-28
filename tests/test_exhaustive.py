@@ -1,11 +1,11 @@
 """
 Category 1: Exhaustive Uniqueness & Randomness Tests (EXH-001 through EXH-008)
 
-These tests issue EVERY possible ID from small-space namespaces (length=5)
-and verify uniqueness, randomness, distribution, and namespace independence.
+These tests issue EVERY possible ID from small-space ID types (length=5)
+and verify uniqueness, randomness, distribution, and ID type independence.
 
 WARNING: Running these tests permanently consumes all IDs in test_ns_1
-and test_ns_2. The namespaces must be reset before re-running.
+and test_ns_2. The ID types must be reset before re-running.
 """
 
 import asyncio
@@ -25,16 +25,16 @@ MAX_ISSUE_ATTEMPTS = 100_000
 
 
 # -------------------------------------------------------------------------
-# Helper: drain a namespace (issue all IDs until exhausted)
+# Helper: drain an ID type (issue all IDs until exhausted)
 # -------------------------------------------------------------------------
-async def _drain_namespace(client, namespace, id_list, exhausted_flag):
-    """Issue all IDs from a namespace until the space is exhausted.
+async def _drain_id_type(client, id_type, id_list, exhausted_flag):
+    """Issue all IDs from an ID type until the space is exhausted.
 
     Appends each issued ID to id_list. Sets exhausted_flag["exhausted"]
     to True when HTTP 410 (IDG-002) is received.
     """
     for _ in range(MAX_ISSUE_ATTEMPTS):
-        resp = await client.post(f"/v1/idgenerator/{namespace}/id")
+        resp = await client.post(f"/v1/idgenerator/{id_type}/id")
 
         if resp.status_code == 200:
             issued_id = resp.json()["response"]["id"]
@@ -55,18 +55,18 @@ async def _drain_namespace(client, namespace, id_list, exhausted_flag):
         else:
             pytest.fail(
                 f"Unexpected status {resp.status_code} while draining "
-                f"namespace '{namespace}': {resp.text}"
+                f"ID type '{id_type}': {resp.text}"
             )
 
     pytest.fail(
         f"Safety limit ({MAX_ISSUE_ATTEMPTS}) reached while draining "
-        f"namespace '{namespace}'. Got {len(id_list)} IDs without "
+        f"ID type '{id_type}'. Got {len(id_list)} IDs without "
         f"exhaustion."
     )
 
 
 # -------------------------------------------------------------------------
-# EXH-001: All IDs unique in namespace 1
+# EXH-001: All IDs unique in ID type 1
 # -------------------------------------------------------------------------
 class TestEXH001:
     """Issue all IDs from test_ns_1. Assert no duplicates."""
@@ -74,14 +74,14 @@ class TestEXH001:
     @pytest.mark.slow
     @pytest.mark.order(3.0)
     async def test_all_ids_unique_ns1(
-        self, client, namespace_1, ns1_issued_ids, ns1_exhausted
+        self, client, id_type_1, ns1_issued_ids, ns1_exhausted
     ):
-        await _drain_namespace(
-            client, namespace_1, ns1_issued_ids, ns1_exhausted
+        await _drain_id_type(
+            client, id_type_1, ns1_issued_ids, ns1_exhausted
         )
 
         assert ns1_exhausted["exhausted"], (
-            "Namespace was not exhausted within the safety limit"
+            "ID type was not exhausted within the safety limit"
         )
         assert len(ns1_issued_ids) > 0, "No IDs were issued"
 
@@ -96,7 +96,7 @@ class TestEXH001:
 
 
 # -------------------------------------------------------------------------
-# EXH-002: All IDs unique in namespace 2
+# EXH-002: All IDs unique in ID type 2
 # -------------------------------------------------------------------------
 class TestEXH002:
     """Issue all IDs from test_ns_2. Assert no duplicates."""
@@ -104,10 +104,10 @@ class TestEXH002:
     @pytest.mark.slow
     @pytest.mark.order(3.0)
     async def test_all_ids_unique_ns2(
-        self, client, namespace_2, ns2_issued_ids, ns2_exhausted
+        self, client, id_type_2, ns2_issued_ids, ns2_exhausted
     ):
-        await _drain_namespace(
-            client, namespace_2, ns2_issued_ids, ns2_exhausted
+        await _drain_id_type(
+            client, id_type_2, ns2_issued_ids, ns2_exhausted
         )
 
         assert ns2_exhausted["exhausted"]
@@ -123,7 +123,7 @@ class TestEXH002:
 
 
 # -------------------------------------------------------------------------
-# EXH-003: IDs not in sequential order (namespace 1)
+# EXH-003: IDs not in sequential order (ID type 1)
 # -------------------------------------------------------------------------
 class TestEXH003:
     """Issued IDs are not in ascending or descending numeric order."""
@@ -145,10 +145,10 @@ class TestEXH003:
 
 
 # -------------------------------------------------------------------------
-# EXH-004: IDs not in sequential order (namespace 2)
+# EXH-004: IDs not in sequential order (ID type 2)
 # -------------------------------------------------------------------------
 class TestEXH004:
-    """Issued IDs from namespace 2 are not sequentially ordered."""
+    """Issued IDs from ID type 2 are not sequentially ordered."""
 
     @pytest.mark.order(3.1)
     async def test_ids_not_sequential_ns2(self, ns2_issued_ids):
@@ -237,13 +237,13 @@ class TestEXH006:
 
 
 # -------------------------------------------------------------------------
-# EXH-007: Namespace independence
+# EXH-007: ID type independence
 # -------------------------------------------------------------------------
 class TestEXH007:
-    """The issuance order differs between namespace 1 and namespace 2."""
+    """The issuance order differs between ID type 1 and ID type 2."""
 
     @pytest.mark.order(3.1)
-    async def test_namespace_independence(
+    async def test_id_type_independence(
         self, ns1_issued_ids, ns2_issued_ids
     ):
         assert len(ns1_issued_ids) > 0, "EXH-001 must run first"
@@ -255,7 +255,7 @@ class TestEXH007:
         ns2_prefix = ns2_issued_ids[:min_len]
 
         assert ns1_prefix != ns2_prefix, (
-            "Both namespaces issued IDs in the exact same order — "
+            "Both ID types issued IDs in the exact same order — "
             "they should be independently randomized"
         )
 
@@ -265,7 +265,7 @@ class TestEXH007:
 # -------------------------------------------------------------------------
 class TestEXH008:
     """Total number of valid IDs falls within the mathematically
-    expected range based on the namespace's id_length."""
+    expected range based on the ID type's id_length."""
 
     @pytest.mark.order(3.1)
     async def test_total_count_within_expected_range(

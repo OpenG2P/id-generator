@@ -18,27 +18,27 @@ from ..models import table_name
 
 logger = logging.getLogger(__name__)
 
-# Per-namespace exhaustion tracking
+# Per-ID-type exhaustion tracking
 _exhausted: dict[str, bool] = {}
 
 
-def is_exhausted(namespace: str) -> bool:
-    """Check if a namespace's ID space is exhausted."""
-    return _exhausted.get(namespace, False)
+def is_exhausted(id_type: str) -> bool:
+    """Check if an ID type's space is exhausted."""
+    return _exhausted.get(id_type, False)
 
 
-def _advisory_lock_key(namespace: str) -> int:
-    """Generate a consistent advisory lock key for a namespace.
+def _advisory_lock_key(id_type: str) -> int:
+    """Generate a consistent advisory lock key for an ID type.
 
-    Uses CRC32 to convert the namespace string to a 32-bit integer,
+    Uses CRC32 to convert the ID type string to a 32-bit integer,
     which PostgreSQL accepts as an advisory lock key.
     """
-    return zlib.crc32(namespace.encode()) & 0x7FFFFFFF
+    return zlib.crc32(id_type.encode()) & 0x7FFFFFFF
 
 
-async def count_available(namespace: str) -> int:
-    """Count AVAILABLE IDs in a namespace's pool."""
-    tbl = table_name(namespace)
+async def count_available(id_type: str) -> int:
+    """Count AVAILABLE IDs in an ID type's pool."""
+    tbl = table_name(id_type)
     sql = text(f"SELECT COUNT(*) FROM {tbl} WHERE status = 'AVAILABLE'")
 
     async with get_session() as session:
@@ -46,7 +46,7 @@ async def count_available(namespace: str) -> int:
         return result.scalar_one()
 
 
-async def _insert_batch(namespace: str, ids: list[str]) -> int:
+async def _insert_batch(id_type: str, ids: list[str]) -> int:
     """Insert a batch of IDs into the pool, skipping duplicates.
 
     Inserts in small sub-batches (100 rows per transaction) to avoid
@@ -54,7 +54,7 @@ async def _insert_batch(namespace: str, ids: list[str]) -> int:
     issue requests.
 
     Args:
-        namespace: Target namespace.
+        id_type: Target ID type.
         ids: List of ID strings to insert.
 
     Returns:
@@ -63,7 +63,7 @@ async def _insert_batch(namespace: str, ids: list[str]) -> int:
     if not ids:
         return 0
 
-    tbl = table_name(namespace)
+    tbl = table_name(id_type)
     inserted = 0
     chunk_size = 100
 
@@ -84,19 +84,19 @@ async def _insert_batch(namespace: str, ids: list[str]) -> int:
     return inserted
 
 
-async def fill_pool(namespace: str, settings: Settings) -> None:
-    """Fill the pool for a namespace up to the configured batch size.
+async def fill_pool(id_type: str, settings: Settings) -> None:
+    """Fill the pool for an ID type up to the configured batch size.
 
     Generates IDs in sub-batches and inserts them. Stops early if
     the ID space is exhausted.
 
     Args:
-        namespace: Target namespace.
+        id_type: Target ID type.
         settings: Application settings.
     """
     cfg = settings.id_generator
-    ns_config = cfg.namespaces[namespace]
-    id_length = ns_config.id_length
+    type_config = cfg.id_types[id_type]
+    id_length = type_config.id_length
     filter_config = cfg.get_filter_config()
 
     target = cfg.pool_generation_batch_size
@@ -114,14 +114,14 @@ async def fill_pool(namespace: str, settings: Settings) -> None:
         )
 
         if ids:
-            inserted = await _insert_batch(namespace, ids)
+            inserted = await _insert_batch(id_type, ids)
             # Track by number of IDs we attempted (not just inserted)
             # to avoid infinite looping when most IDs are duplicates
             generated += len(ids)
             logger.info(
-                "Namespace '%s': generated %d, inserted %d "
+                "ID type '%s': generated %d, inserted %d "
                 "(batch progress: %d/%d)",
-                namespace,
+                id_type,
                 len(ids),
                 inserted,
                 generated,
@@ -129,64 +129,64 @@ async def fill_pool(namespace: str, settings: Settings) -> None:
             )
 
         if exhausted:
-            _exhausted[namespace] = True
+            _exhausted[id_type] = True
             logger.warning(
-                "Namespace '%s': ID space exhausted after generating %d IDs",
-                namespace,
+                "ID type '%s': ID space exhausted after generating %d IDs",
+                id_type,
                 generated,
             )
             break
 
 
-async def try_immediate_replenish(namespace: str, settings: Settings) -> bool:
+async def try_immediate_replenish(id_type: str, settings: Settings) -> bool:
     """Attempt immediate replenishment when pool is empty during an
     issue request.
 
     Args:
-        namespace: Target namespace.
+        id_type: Target ID type.
         settings: Application settings.
 
     Returns:
         True if at least one new ID was generated, False if space
         is exhausted.
     """
-    if is_exhausted(namespace):
+    if is_exhausted(id_type):
         return False
 
     cfg = settings.id_generator
-    ns_config = cfg.namespaces[namespace]
+    type_config = cfg.id_types[id_type]
     filter_config = cfg.get_filter_config()
 
     ids, exhausted = generate_batch(
         count=100,  # Small batch for immediate response
-        id_length=ns_config.id_length,
+        id_length=type_config.id_length,
         config=filter_config,
         max_attempts=cfg.exhaustion_max_attempts,
     )
 
     if ids:
-        inserted = await _insert_batch(namespace, ids)
+        inserted = await _insert_batch(id_type, ids)
         if inserted > 0:
             return True
         # All generated IDs already exist in DB — space is effectively
         # exhausted even though in-memory generation succeeded.
         logger.warning(
-            "Namespace '%s': generated %d IDs but 0 were new "
+            "ID type '%s': generated %d IDs but 0 were new "
             "(all already exist in DB). Space is exhausted.",
-            namespace,
+            id_type,
             len(ids),
         )
-        _exhausted[namespace] = True
+        _exhausted[id_type] = True
         return False
 
     if exhausted:
-        _exhausted[namespace] = True
+        _exhausted[id_type] = True
 
     return False
 
 
-async def ensure_minimum_pool(namespace: str, settings: Settings) -> None:
-    """Ensure a namespace has at least pool_min_threshold AVAILABLE IDs.
+async def ensure_minimum_pool(id_type: str, settings: Settings) -> None:
+    """Ensure an ID type has at least pool_min_threshold AVAILABLE IDs.
 
     Called at startup (blocking). Generates IDs until the threshold is met
     or the space is exhausted.
@@ -194,51 +194,51 @@ async def ensure_minimum_pool(namespace: str, settings: Settings) -> None:
     cfg = settings.id_generator
     threshold = cfg.pool_min_threshold
 
-    available = await count_available(namespace)
+    available = await count_available(id_type)
     logger.info(
-        "Namespace '%s': %d AVAILABLE IDs (threshold: %d)",
-        namespace,
+        "ID type '%s': %d AVAILABLE IDs (threshold: %d)",
+        id_type,
         available,
         threshold,
     )
 
-    while available < threshold and not is_exhausted(namespace):
-        await fill_pool(namespace, settings)
-        available = await count_available(namespace)
+    while available < threshold and not is_exhausted(id_type):
+        await fill_pool(id_type, settings)
+        available = await count_available(id_type)
 
-    if is_exhausted(namespace):
+    if is_exhausted(id_type):
         logger.warning(
-            "Namespace '%s': space exhausted with %d AVAILABLE IDs "
+            "ID type '%s': space exhausted with %d AVAILABLE IDs "
             "(threshold was %d)",
-            namespace,
+            id_type,
             available,
             threshold,
         )
     else:
         logger.info(
-            "Namespace '%s': pool ready with %d AVAILABLE IDs",
-            namespace,
+            "ID type '%s': pool ready with %d AVAILABLE IDs",
+            id_type,
             available,
         )
 
 
-async def check_and_replenish(namespace: str, settings: Settings) -> None:
+async def check_and_replenish(id_type: str, settings: Settings) -> None:
     """Check pool level and replenish if below threshold.
 
     Uses PostgreSQL advisory locks to ensure only one pod generates
-    at a time per namespace. The lock is held on a single session
+    at a time per ID type. The lock is held on a single session
     throughout the entire generation process.
     """
-    if is_exhausted(namespace):
+    if is_exhausted(id_type):
         return
 
     cfg = settings.id_generator
-    available = await count_available(namespace)
+    available = await count_available(id_type)
 
     if available >= cfg.pool_min_threshold:
         return
 
-    lock_key = _advisory_lock_key(namespace)
+    lock_key = _advisory_lock_key(id_type)
 
     # Use a single session for the entire lock lifecycle:
     # acquire lock -> fill pool -> release lock
@@ -251,21 +251,21 @@ async def check_and_replenish(namespace: str, settings: Settings) -> None:
 
         if not acquired:
             logger.debug(
-                "Namespace '%s': advisory lock not acquired, "
+                "ID type '%s': advisory lock not acquired, "
                 "another pod is generating",
-                namespace,
+                id_type,
             )
             return
 
         try:
             logger.info(
-                "Namespace '%s': pool below threshold (%d < %d), "
+                "ID type '%s': pool below threshold (%d < %d), "
                 "starting replenishment",
-                namespace,
+                id_type,
                 available,
                 cfg.pool_min_threshold,
             )
-            await fill_pool(namespace, settings)
+            await fill_pool(id_type, settings)
         finally:
             # Release the advisory lock on the SAME session
             await session.execute(
@@ -275,7 +275,7 @@ async def check_and_replenish(namespace: str, settings: Settings) -> None:
 
 async def pool_replenishment_loop(settings: Settings) -> None:
     """Background loop that periodically checks and replenishes all
-    namespace pools.
+    ID type pools.
 
     Runs indefinitely until cancelled.
     """
@@ -284,11 +284,11 @@ async def pool_replenishment_loop(settings: Settings) -> None:
     while True:
         await asyncio.sleep(interval)
 
-        for namespace in settings.id_generator.namespaces:
+        for id_type in settings.id_generator.id_types:
             try:
-                await check_and_replenish(namespace, settings)
+                await check_and_replenish(id_type, settings)
             except Exception:
                 logger.exception(
-                    "Error during pool replenishment for namespace '%s'",
-                    namespace,
+                    "Error during pool replenishment for ID type '%s'",
+                    id_type,
                 )

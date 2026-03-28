@@ -27,9 +27,9 @@ data:
       exhaustion_max_attempts: {{ .Values.appConfig.exhaustionMaxAttempts }}
       sub_batch_size: {{ .Values.appConfig.subBatchSize }}
 
-      # Namespaces
-      namespaces:
-        {{- range $name, $ns := .Values.appConfig.namespaces }}
+      # ID types
+      id_types:
+        {{- range $name, $ns := .Values.appConfig.idTypes }}
         {{ $name }}:
           id_length: {{ $ns.idLength }}
         {{- end }}

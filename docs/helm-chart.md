@@ -34,13 +34,13 @@ helm install id-generator charts/id-generator \
   -n <namespace> --create-namespace
 ```
 
-### Install with Custom Namespaces
+### Install with Custom ID Types
 
 ```bash
 helm install id-generator charts/id-generator \
   -n trial --create-namespace \
-  --set idGenerator.appConfig.namespaces.farmer_id.idLength=6 \
-  --set idGenerator.appConfig.namespaces.national_id.idLength=10
+  --set idGenerator.appConfig.idTypes.farmer_id.idLength=6 \
+  --set idGenerator.appConfig.idTypes.national_id.idLength=10
 ```
 
 ### Install with Values File Override
@@ -61,7 +61,7 @@ global:
 idGenerator:
   replicaCount: 3
   appConfig:
-    namespaces:
+    idTypes:
       farmer_id:
         idLength: 6
       household_id:
@@ -85,7 +85,7 @@ helm install id-generator charts/id-generator \
 helm upgrade id-generator charts/id-generator -n trial
 ```
 
-To add or remove namespaces, update `appConfig.namespaces` in your values and run `helm upgrade`. The pods will restart with the new ConfigMap.
+To add or remove ID types, update `appConfig.idTypes` in your values and run `helm upgrade`. The pods will restart with the new ConfigMap.
 
 ## Uninstall
 
@@ -126,17 +126,17 @@ helm uninstall id-generator -n trial
 
 These values are rendered into a ConfigMap and mounted as the service's YAML config file.
 
-#### Namespaces
+#### ID Types
 
 | Parameter | Description | Default |
 |---|---|---|
-| `idGenerator.appConfig.namespaces` | Map of namespace name → config. Each namespace gets its own DB table. | See below |
-| `idGenerator.appConfig.namespaces.<name>.idLength` | Number of digits in generated IDs (2–32) | — |
+| `idGenerator.appConfig.idTypes` | Map of ID type name → config. Each ID type gets its own DB table. | See below |
+| `idGenerator.appConfig.idTypes.<name>.idLength` | Number of digits in generated IDs (2–32) | — |
 
-Default namespaces:
+Default ID types:
 
 ```yaml
-namespaces:
+idTypes:
   farmer_id:
     idLength: 6
   household_id:
@@ -222,7 +222,7 @@ Optional env vars (uncomment in values.yaml to override):
 
 | Resource | Name | Purpose |
 |---|---|---|
-| ConfigMap | `<release>-config` | Application config YAML (namespaces, filters, pool settings) |
+| ConfigMap | `<release>-config` | Application config YAML (ID types, filters, pool settings) |
 | Deployment | `<release>` | ID Generator pods |
 | Service | `<release>` | ClusterIP service (port 80 → 8000) |
 | Secret | `<release>` | Auto-generated DB user password (pre-install hook) |
@@ -234,18 +234,18 @@ Optional env vars (uncomment in values.yaml to override):
 
 1. **postgres-init Job** — Creates the database and user in PostgreSQL
 2. **Init container (postgres-checker)** — Waits until the database is accessible with the correct credentials (loops `psql SELECT 1`)
-3. **Main container** — Starts the ID Generator service, creates namespace tables, fills the initial pool
+3. **Main container** — Starts the ID Generator service, creates ID type tables, fills the initial pool
 4. **Startup probe** — Waits up to 5 minutes (30 × 10s) for the service to be ready
 
-### Adding / Removing Namespaces
+### Adding / Removing ID Types
 
-To change namespaces after initial deployment:
+To change ID types after initial deployment:
 
-1. Update `idGenerator.appConfig.namespaces` in your values
+1. Update `idGenerator.appConfig.idTypes` in your values
 2. Run `helm upgrade` — this updates the ConfigMap
 3. Pods restart and pick up the new config
-4. New namespace tables are created automatically
-5. Removed namespaces are deactivated (tables are preserved in the database)
+4. New ID type tables are created automatically
+5. Removed ID types are deactivated (tables are preserved in the database)
 
 ## Manual Installation (Rancher UI)
 
@@ -253,7 +253,7 @@ The chart includes a `questions.yaml` for Rancher's Helm UI, which presents a gu
 
 - **General** — Hostname, PostgreSQL host, enable/disable components
 - **Database** — Database name, user, secret references
-- **Namespaces** — ID generation namespaces and their config
+- **ID Types** — ID generation types and their config
 - **Pool Management** — Pool thresholds and batch sizes
 - **Image** — Docker image repository and tag
 - **Scaling** — Replica count and HPA settings

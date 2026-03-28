@@ -34,7 +34,7 @@ All components use **permissive open-source licenses**. No copyleft (GPL) depend
 
 ```
 tests/
-├── conftest.py                 # Fixtures: base_url, http client, namespace setup
+├── conftest.py                 # Fixtures: base_url, http client, ID type setup
 ├── report_plugin.py            # Custom pytest plugin for enhanced HTML report
 ├── pytest.ini                  # Marker registration, default options
 ├── test_cases.yaml             # Reviewable list of all test cases (human-readable)
@@ -68,7 +68,7 @@ pytest -m exhaustion
 pytest -m performance
 
 # Run a single test
-pytest test_exhaustive.py::test_all_ids_unique_namespace_1
+pytest test_exhaustive.py::test_all_ids_unique_id_type_1
 
 # Generate HTML report
 pytest --html=report.html
@@ -81,7 +81,7 @@ export IDGEN_BASE_URL=http://localhost:8000
 pytest
 ```
 
-> **Note**: Namespace names and ID lengths are **not** configured in the test framework. They are **auto-discovered** from the running service via `GET /v1/idgenerator/config` at the start of each test session. When you change namespaces in the service config, tests automatically adapt — no test configuration changes needed.
+> **Note**: ID type names and ID lengths are **not** configured in the test framework. They are **auto-discovered** from the running service via `GET /v1/idgenerator/config` at the start of each test session. When you change ID types in the service config, tests automatically adapt — no test configuration changes needed.
 
 ### 4.3 Pytest Markers
 
@@ -101,14 +101,14 @@ markers =
 
 ## 5. Test Prerequisites
 
-Before running the tests, the target ID Generator service must be configured with **at least three namespaces**:
+Before running the tests, the target ID Generator service must be configured with **at least three ID types**:
 
-- **Two namespaces with a small ID length** (e.g., 5 digits) — used for exhaustive tests that drain the entire ID space.
-- **One namespace with a larger ID length** (e.g., 10 digits) — used for performance and filter tests that need a large pool.
+- **Two ID types with a small ID length** (e.g., 5 digits) — used for exhaustive tests that drain the entire ID space.
+- **One ID type with a larger ID length** (e.g., 10 digits) — used for performance and filter tests that need a large pool.
 
 Example configuration:
 ```yaml
-namespaces:
+id_types:
   farmer_id:
     id_length: 5
   household_id:
@@ -117,10 +117,10 @@ namespaces:
     id_length: 10
 ```
 
-The test framework **auto-discovers** namespace names and ID lengths from the service's `GET /v1/idgenerator/config` endpoint at session start. It then automatically selects:
-- `namespace_1`: The first namespace with the **smallest** `id_length` (for exhaustive tests).
-- `namespace_2`: The second namespace with the **smallest** `id_length` (for namespace independence tests).
-- `perf_namespace`: The namespace with the **largest** `id_length` (for performance and filter tests that require long IDs).
+The test framework **auto-discovers** ID type names and ID lengths from the service's `GET /v1/idgenerator/config` endpoint at session start. It then automatically selects:
+- `id_type_1`: The first ID type with the **smallest** `id_length` (for exhaustive tests).
+- `id_type_2`: The second ID type with the **smallest** `id_length` (for ID type independence tests).
+- `perf_id_type`: The ID type with the **largest** `id_length` (for performance and filter tests that require long IDs).
 
 **Why small ID length for exhaustive tests?**
 - 4 random digits + 1 Verhoeff checksum = 5-digit IDs.
@@ -128,7 +128,7 @@ The test framework **auto-discovers** namespace names and ID lengths from the se
 - After all filters, the valid space is approximately 2,000–4,000 IDs (estimate).
 - This is small enough to exhaustively issue every ID via the API in a reasonable time.
 
-**Important**: The small-ID-length namespaces should be **dedicated for testing** and not shared with production workloads. Running the exhaustive tests will consume all IDs in those namespaces.
+**Important**: The small-ID-length ID types should be **dedicated for testing** and not shared with production workloads. Running the exhaustive tests will consume all IDs in those ID types.
 
 ---
 
@@ -139,21 +139,21 @@ The test framework **auto-discovers** namespace names and ID lengths from the se
 | `base_url` | session | Service URL from CLI option or env var |
 | `client` | session | `httpx.AsyncClient` instance with base URL configured |
 | `service_config` | session | Fetches and caches config from `GET /v1/idgenerator/config` at session start |
-| `namespaces` | session | Dict of all configured namespaces (from `service_config`) |
-| `namespace_1` | session | Auto-selected: first namespace with smallest `id_length` |
-| `namespace_2` | session | Auto-selected: second namespace with smallest `id_length` |
-| `perf_namespace` | session | Auto-selected: namespace with largest `id_length` |
-| `ns1_id_length` | session | ID length configured for `namespace_1` |
-| `ns2_id_length` | session | ID length configured for `namespace_2` |
-| `perf_id_length` | session | ID length configured for `perf_namespace` |
-| `issue_id(client, namespace)` | session | Callable: `POST` Issue ID API, returns httpx response |
-| `validate_id(client, namespace, id)` | session | Callable: `GET` Validate ID API, returns httpx response |
+| `id_types` | session | Dict of all configured ID types (from `service_config`) |
+| `id_type_1` | session | Auto-selected: first ID type with smallest `id_length` |
+| `id_type_2` | session | Auto-selected: second ID type with smallest `id_length` |
+| `perf_id_type` | session | Auto-selected: ID type with largest `id_length` |
+| `ns1_id_length` | session | ID length configured for `id_type_1` |
+| `ns2_id_length` | session | ID length configured for `id_type_2` |
+| `perf_id_length` | session | ID length configured for `perf_id_type` |
+| `issue_id(client, id_type)` | session | Callable: `POST` Issue ID API, returns httpx response |
+| `validate_id(client, id_type, id)` | session | Callable: `GET` Validate ID API, returns httpx response |
 | `health_check(client)` | session | Callable: `GET` Health API, returns httpx response |
 | `service_version` | session | Fetches and caches version info from `GET /v1/idgenerator/version` at session start |
-| `ns1_issued_ids` | session | List collecting all IDs issued from `namespace_1` during exhaustive tests |
-| `ns2_issued_ids` | session | List collecting all IDs issued from `namespace_2` during exhaustive tests |
-| `ns1_exhausted` | session | Dict tracking whether `namespace_1` has been fully exhausted |
-| `ns2_exhausted` | session | Dict tracking whether `namespace_2` has been fully exhausted |
+| `ns1_issued_ids` | session | List collecting all IDs issued from `id_type_1` during exhaustive tests |
+| `ns2_issued_ids` | session | List collecting all IDs issued from `id_type_2` during exhaustive tests |
+| `ns1_exhausted` | session | Dict tracking whether `id_type_1` has been fully exhausted |
+| `ns2_exhausted` | session | Dict tracking whether `id_type_2` has been fully exhausted |
 
 ---
 
@@ -161,22 +161,22 @@ The test framework **auto-discovers** namespace names and ID lengths from the se
 
 ### Category 1: Exhaustive Uniqueness & Randomness (`test_exhaustive.py`)
 
-These tests issue **every possible ID** from a small-space namespace (length=5) and verify correctness.
+These tests issue **every possible ID** from a small-space ID type (length=5) and verify correctness.
 
 | # | Test ID | Test Name | Description | Marker |
 |---|---------|-----------|-------------|--------|
 | 1.1 | `EXH-001` | `test_all_ids_unique_ns1` | `POST` Issue IDs from `test_ns_1` one at a time until space is exhausted (HTTP `410`/`IDG-002`). Collect all IDs into a list. Assert: no duplicates (length of set == length of list). | `exhaustive`, `slow` |
-| 1.2 | `EXH-002` | `test_all_ids_unique_ns2` | Same as EXH-001 but for `test_ns_2`. Verifies namespace isolation — IDs are independently generated. | `exhaustive`, `slow` |
+| 1.2 | `EXH-002` | `test_all_ids_unique_ns2` | Same as EXH-001 but for `test_ns_2`. Verifies ID type isolation — IDs are independently generated. | `exhaustive`, `slow` |
 | 1.3 | `EXH-003` | `test_ids_not_sequential_ns1` | Using the list from EXH-001: assert that IDs are NOT in ascending or descending numeric order. Compare the issued order with sorted order — they must differ. | `exhaustive` |
 | 1.4 | `EXH-004` | `test_ids_not_sequential_ns2` | Same as EXH-003 for `test_ns_2`. | `exhaustive` |
 | 1.5 | `EXH-005` | `test_ids_not_clustered` | Using the list from EXH-001: convert IDs to integers, compute first-order differences (delta between consecutive IDs). Assert that deltas are not constant or near-constant (std deviation of deltas > threshold). | `exhaustive` |
 | 1.6 | `EXH-006` | `test_digit_distribution` | Across all issued IDs from EXH-001: for each middle digit position (excluding position 0 and the checksum digit), count frequency of each digit (0-9). Assert no single digit accounts for >50% of occurrences at any position. This catches gross generation bugs while tolerating the inherent bias from filter rules (no repeating digits, no sequences, no consecutive even digits). | `exhaustive` |
-| 1.7 | `EXH-007` | `test_namespace_independence` | Compare IDs issued to `test_ns_1` and `test_ns_2`. Assert: the **order** of issuance differs (since each namespace generates independently). The sets of IDs may overlap (same valid ID can exist in both namespaces), but the issuance order must be different. | `exhaustive` |
+| 1.7 | `EXH-007` | `test_id_type_independence` | Compare IDs issued to `test_ns_1` and `test_ns_2`. Assert: the **order** of issuance differs (since each ID type generates independently). The sets of IDs may overlap (same valid ID can exist in both ID types), but the issuance order must be different. | `exhaustive` |
 | 1.8 | `EXH-008` | `test_total_count_within_expected_range` | Assert that the total number of IDs issued before exhaustion falls within a dynamically computed expected range based on `id_length`. Raw space = `8 * 10^(id_length - 2)`. Expected range: `[5% of raw_space, raw_space]`. Filters typically reduce the raw space to 15-60% depending on ID length and filter parameters. | `exhaustive` |
 
 ### Category 2: Filter Validation (`test_filters.py`)
 
-These tests use the **Validate ID API** (`GET /v1/idgenerator/{namespace}/id/validate/{id}`) to verify that filters accept/reject IDs correctly. No IDs are consumed from the pool.
+These tests use the **Validate ID API** (`GET /v1/idgenerator/{id_type}/id/validate/{id}`) to verify that filters accept/reject IDs correctly. No IDs are consumed from the pool.
 
 Additionally, all IDs collected during the exhaustive tests are cross-checked.
 
@@ -195,7 +195,7 @@ Additionally, all IDs collected during the exhaustive tests are cross-checked.
 | 2.11 | `FLT-011` | `test_first_equals_reverse_last_rejected` | Construct an ID where first N digits equal reverse of last N digits. Assert `valid: false`. | `filters` |
 | 2.12 | `FLT-012` | `test_restricted_number_rejected` | Configure a restricted number, construct an ID containing it. Assert `valid: false`. | `filters` |
 | 2.13 | `FLT-013` | `test_cyclic_number_rejected` | Construct an ID containing cyclic number `142857` (the shortest one). Assert `valid: false`. Requires ID length >= 7. | `filters` |
-| 2.14 | `FLT-014` | `test_wrong_length_rejected` | Submit an ID with incorrect length for the namespace. Assert `valid: false`. | `filters` |
+| 2.14 | `FLT-014` | `test_wrong_length_rejected` | Submit an ID with incorrect length for the ID type. Assert `valid: false`. | `filters` |
 | 2.15 | `FLT-015` | `test_all_exhaustive_ids_pass_validation` | Take all IDs collected from EXH-001. Submit each to the Validate API. Assert **every one** returns `valid: true`. This cross-checks that the generator and validator agree. | `filters`, `slow` |
 | 2.16 | `FLT-016` | `test_boundary_sequence_allowed` | Construct an ID with a sequence exactly at the limit (e.g., `X12X` with limit=3 → "12" is length 2, allowed). Assert `valid: true`. | `filters` |
 | 2.17 | `FLT-017` | `test_boundary_repeating_allowed` | Construct an ID where same digit appears but beyond the limit distance. Assert `valid: true`. | `filters` |
@@ -208,13 +208,13 @@ These tests verify correct behavior when the ID space is fully consumed.
 | # | Test ID | Test Name | Description | Marker |
 |---|---------|-----------|-------------|--------|
 | 3.1 | `EXS-001` | `test_exhaustion_returns_error` | After EXH-001 has consumed all IDs in `test_ns_1`, `POST` one more Issue ID. Assert: HTTP `410 Gone`, error code `IDG-002` with appropriate message. | `exhaustion` |
-| 3.2 | `EXS-002` | `test_exhaustion_error_is_permanent` | After EXS-001, `POST` another Issue ID from the same namespace. Assert: still HTTP `410`, `IDG-002` (not a transient error). | `exhaustion` |
-| 3.3 | `EXS-003` | `test_other_namespace_unaffected` | After `test_ns_1` is exhausted, `POST` Issue ID from `test_ns_2` (if not yet exhausted). Assert: HTTP `200`, succeeds normally. Namespaces are independent. | `exhaustion` |
+| 3.2 | `EXS-002` | `test_exhaustion_error_is_permanent` | After EXS-001, `POST` another Issue ID from the same ID type. Assert: still HTTP `410`, `IDG-002` (not a transient error). | `exhaustion` |
+| 3.3 | `EXS-003` | `test_other_id_type_unaffected` | After `test_ns_1` is exhausted, `POST` Issue ID from `test_ns_2` (if not yet exhausted). Assert: HTTP `200`, succeeds normally. ID types are independent. | `exhaustion` |
 | 3.4 | `EXS-004` | `test_exhaustion_response_format` | Verify the exhaustion error response matches the standard MOSIP error envelope: HTTP `410`, `Content-Type: application/json`, `response` is `null`, `errors` array contains `errorCode` and `message`. | `exhaustion` |
 
 ### Category 4: Response Time (`test_performance.py`)
 
-These tests measure API response latency. They should run against a namespace with a healthy pool (NOT the exhausted test namespaces). Requires a separate namespace (e.g., `test_perf_ns`) with a larger ID length (e.g., 10) so the pool doesn't run out during testing.
+These tests measure API response latency. They should run against an ID type with a healthy pool (NOT the exhausted test ID types). Requires a separate ID type (e.g., `test_perf_ns`) with a larger ID length (e.g., 10) so the pool doesn't run out during testing.
 
 | # | Test ID | Test Name | Description | Marker |
 |---|---------|-----------|-------------|--------|
@@ -231,16 +231,16 @@ These tests verify OpenAPI compliance, HTTP status codes, response structure, er
 |---|---------|-----------|-------------|--------|
 | 5.1 | `API-001` | `test_issue_response_envelope` | `POST` to Issue ID. Assert: HTTP `200`, `Content-Type: application/json`, response has `id`, `version`, `responsetime` (ISO 8601 format), `response.id` (string of digits), `errors` (empty list). | `api_contract` |
 | 5.2 | `API-002` | `test_validate_response_envelope` | `GET` Validate ID. Assert: HTTP `200`, `Content-Type: application/json`, response has `id`, `version`, `responsetime`, `response.id`, `response.valid` (boolean), `errors`. | `api_contract` |
-| 5.3 | `API-003` | `test_unknown_namespace_returns_404` | `POST` to Issue ID with a non-existent namespace. Assert: HTTP `404`, error code `IDG-003`, `response` is `null`. | `api_contract` |
-| 5.4 | `API-004` | `test_validate_unknown_namespace_returns_404` | `GET` Validate ID with a non-existent namespace. Assert: HTTP `404`, error code `IDG-003`. | `api_contract` |
+| 5.3 | `API-003` | `test_unknown_id_type_returns_404` | `POST` to Issue ID with a non-existent ID type. Assert: HTTP `404`, error code `IDG-003`, `response` is `null`. | `api_contract` |
+| 5.4 | `API-004` | `test_validate_unknown_id_type_returns_404` | `GET` Validate ID with a non-existent ID type. Assert: HTTP `404`, error code `IDG-003`. | `api_contract` |
 | 5.5 | `API-005` | `test_health_endpoint_returns_healthy` | `GET` Health. Assert: HTTP `200`, response indicates healthy. | `api_contract` |
 | 5.6 | `API-006` | `test_issued_id_is_numeric` | `POST` to Issue ID. Assert: the returned ID string contains only digits (regex `^\d+$`). | `api_contract` |
-| 5.7 | `API-007` | `test_issued_id_correct_length` | `POST` to Issue ID. Assert: length matches the namespace configuration. | `api_contract` |
+| 5.7 | `API-007` | `test_issued_id_correct_length` | `POST` to Issue ID. Assert: length matches the ID type configuration. | `api_contract` |
 | 5.8 | `API-008` | `test_issued_id_passes_validation` | `POST` to Issue ID, then `GET` Validate. Assert: `valid: true`. | `api_contract` |
 | 5.9 | `API-009` | `test_version_endpoint` | `GET` Version. Assert: HTTP `200`, response contains `service_version` (semver format), `build_time`, `git_commit`. | `api_contract` |
 | 5.10 | `API-010` | `test_version_response_envelope` | Verify the version response follows the standard MOSIP envelope: `id`, `version`, `responsetime`, `response`, `errors`. | `api_contract` |
 | 5.11 | `API-011` | `test_issue_id_get_not_allowed` | `GET` (not `POST`) to Issue ID endpoint. Assert: HTTP `405 Method Not Allowed`. Confirms only `POST` is accepted. | `api_contract` |
-| 5.12 | `API-012` | `test_invalid_namespace_format_returns_422` | `POST` to Issue ID with an invalid namespace format (e.g., `123invalid`, `UPPER`, `ns with spaces`). Assert: HTTP `422 Unprocessable Entity`. | `api_contract` |
+| 5.12 | `API-012` | `test_invalid_id_type_format_returns_422` | `POST` to Issue ID with an invalid ID type format (e.g., `123invalid`, `UPPER`, `ns with spaces`). Assert: HTTP `422 Unprocessable Entity`. | `api_contract` |
 | 5.13 | `API-013` | `test_invalid_id_format_returns_422` | `GET` Validate with an invalid ID format (e.g., `abc`, `12.34`). Assert: HTTP `422 Unprocessable Entity`. | `api_contract` |
 | 5.14 | `API-014` | `test_openapi_spec_available` | `GET /openapi.json`. Assert: HTTP `200`, response is valid JSON with `openapi` field starting with `3.`. | `api_contract` |
 | 5.15 | `API-015` | `test_content_type_json` | Call each endpoint. Assert: all responses include `Content-Type: application/json` header. | `api_contract` |
@@ -341,7 +341,7 @@ Phase 2: Filter validation tests (filters)
     → FLT-015 runs after exhaustive tests
 
 Phase 3: Exhaustive tests (exhaustive)
-    → Issues ALL IDs from test_ns_1 and test_ns_2
+    → Issues ALL IDs from ID types test_ns_1 and test_ns_2
     → Collects IDs into session-scoped fixtures for later use
     → This is the longest phase
 
@@ -350,7 +350,7 @@ Phase 4: Exhaustion tests (exhaustion)
     → Must run after exhaustive tests
 
 Phase 5: Performance tests (performance)
-    → Runs against a separate performance namespace (test_perf_ns)
+    → Runs against a separate performance ID type (test_perf_ns)
     → Independent of other phases
 ```
 
@@ -422,23 +422,23 @@ pytest -m performance --base-url=http://localhost:8000 -v --tb=short --durations
 
 ---
 
-## 10. Test Namespaces Required
+## 10. Test ID Types Required
 
-Tests **auto-discover** namespaces from the service via `GET /v1/idgenerator/config`.
-No namespace names are hardcoded in tests. The service must have at least:
+Tests **auto-discover** ID types from the service via `GET /v1/idgenerator/config`.
+No ID type names are hardcoded in tests. The service must have at least:
 
-- **2 namespaces with small `id_length`** (e.g., 5) — used for exhaustive tests
-- **1 namespace with large `id_length`** (e.g., 10+) — used for performance tests
+- **2 ID types with small `id_length`** (e.g., 5) — used for exhaustive tests
+- **1 ID type with large `id_length`** (e.g., 10+) — used for performance tests
 
 **Warning**: Running the exhaustive tests will permanently consume ALL IDs in the
-two smallest-length namespaces. These namespaces must be reset (drop tables and
+two smallest-length ID types. These ID types must be reset (drop tables and
 restart the service) before re-running.
 
 ### Conditionally Skipped Tests
 
 | Test | Skip condition | How to enable |
 |------|----------------|---------------|
-| FLT-010 (first=last) | `id_length < 2 * digits_group_limit + 1` | Use namespace with `id_length >= 11` (for default limit=5) |
+| FLT-010 (first=last) | `id_length < 2 * digits_group_limit + 1` | Use ID type with `id_length >= 11` (for default limit=5) |
 | FLT-011 (first=reverse last) | `id_length < 2 * reverse_digits_group_limit + 1` | Same as above |
 | FLT-012 (restricted numbers) | `restricted_numbers` is empty | Add entries to `restricted_numbers` in config |
 | FLT-015 (cross-validate) | Exhaustive tests haven't run | Run as part of the full suite, not in isolation |
@@ -462,8 +462,8 @@ This allows later tests (FLT-015, EXH-003, etc.) to reuse the collected data wit
 
 ### 11.2 Test Reset
 
-To re-run exhaustive tests, the test namespaces must be reset. This can be done by:
-1. Restarting the service with the test namespaces in config (tables are re-created if dropped).
+To re-run exhaustive tests, the test ID types must be reset. This can be done by:
+1. Restarting the service with the test ID types in config (tables are re-created if dropped).
 2. Or providing a test setup script that truncates/drops the test tables.
 
 ---

@@ -22,13 +22,13 @@ class TestEXS001:
     """After all IDs are consumed, POST returns HTTP 410 with IDG-002."""
 
     async def test_exhaustion_returns_error(
-        self, client, namespace_1, ns1_exhausted, issue_id
+        self, client, id_type_1, ns1_exhausted, issue_id
     ):
         assert ns1_exhausted["exhausted"], (
-            "Precondition failed: EXH-001 must exhaust namespace first"
+            "Precondition failed: EXH-001 must exhaust ID type first"
         )
 
-        resp = await issue_id(client, namespace_1)
+        resp = await issue_id(client, id_type_1)
 
         assert resp.status_code == 410, (
             f"Expected HTTP 410 (Gone), got {resp.status_code}"
@@ -46,36 +46,36 @@ class TestEXS002:
     """Exhaustion error persists on subsequent requests (not transient)."""
 
     async def test_exhaustion_error_is_permanent(
-        self, client, namespace_1, ns1_exhausted, issue_id
+        self, client, id_type_1, ns1_exhausted, issue_id
     ):
         assert ns1_exhausted["exhausted"]
 
         # Call twice to verify it's still exhausted
         for _ in range(2):
-            resp = await issue_id(client, namespace_1)
+            resp = await issue_id(client, id_type_1)
             assert resp.status_code == 410
             assert resp.json()["errors"][0]["errorCode"] == "IDG-002"
 
 
 # -------------------------------------------------------------------------
-# EXS-003: Other namespace is unaffected
+# EXS-003: Other ID type is unaffected
 # -------------------------------------------------------------------------
 class TestEXS003:
-    """Exhaustion in one namespace does not affect other namespaces.
-    Uses the perf namespace which has a large pool."""
+    """Exhaustion in one ID type does not affect other ID types.
+    Uses the perf ID type which has a large pool."""
 
-    async def test_other_namespace_unaffected(
-        self, client, perf_namespace, ns1_exhausted, issue_id
+    async def test_other_id_type_unaffected(
+        self, client, perf_id_type, ns1_exhausted, issue_id
     ):
         assert ns1_exhausted["exhausted"], (
             "Precondition: test_ns_1 must be exhausted"
         )
 
-        # The perf namespace should still have IDs available
-        resp = await issue_id(client, perf_namespace)
+        # The perf ID type should still have IDs available
+        resp = await issue_id(client, perf_id_type)
 
         assert resp.status_code == 200, (
-            f"Expected HTTP 200 from unaffected namespace, "
+            f"Expected HTTP 200 from unaffected ID type, "
             f"got {resp.status_code}"
         )
 
@@ -91,11 +91,11 @@ class TestEXS004:
     """Exhaustion error response matches the standard MOSIP envelope."""
 
     async def test_exhaustion_response_format(
-        self, client, namespace_1, ns1_exhausted, issue_id
+        self, client, id_type_1, ns1_exhausted, issue_id
     ):
         assert ns1_exhausted["exhausted"]
 
-        resp = await issue_id(client, namespace_1)
+        resp = await issue_id(client, id_type_1)
 
         assert resp.status_code == 410
         assert "application/json" in resp.headers.get("content-type", "")

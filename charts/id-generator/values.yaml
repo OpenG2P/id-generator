@@ -89,13 +89,13 @@ idGenerator:
         credentialName: ""
 
   # ---------------------------------------------------------------------------
-  # Application configuration — namespaces, filter rules, pool settings
+  # Application configuration — ID types, filter rules, pool settings
   # This is rendered as a ConfigMap and mounted into the container.
   # ---------------------------------------------------------------------------
   appConfig:
-    # -- Namespaces for ID generation. Each namespace gets its own DB table.
-    # -- Add or remove namespaces here; restart pods to apply.
-    namespaces:
+    # -- ID types for ID generation. Each ID type gets its own DB table.
+    # -- Add or remove ID types here; restart pods to apply.
+    idTypes:
       farmer_id:
         idLength: 6
       household_id:

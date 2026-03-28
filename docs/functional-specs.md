@@ -8,32 +8,32 @@
 
 ## 1. Overview
 
-A FastAPI-based service that generates unique, random numeric IDs for multiple consuming applications (social ID, farmer ID, family ID, health ID, etc.). Each application operates within its own **namespace**, with an independent pool of pre-generated IDs. The service is designed to be horizontally scalable on Kubernetes.
+A FastAPI-based service that generates unique, random numeric IDs for multiple consuming applications (social ID, farmer ID, family ID, health ID, etc.). Each application operates within its own **ID type**, with an independent pool of pre-generated IDs. The service is designed to be horizontally scalable on Kubernetes.
 
-**Reference**: Based on [MOSIP UIN Generator](https://docs.mosip.io/1.2.0/id-lifecycle-management/supporting-components/commons/id-generator#uin-generation-filters) with extensions for multi-namespace support.
+**Reference**: Based on [MOSIP UIN Generator](https://docs.mosip.io/1.2.0/id-lifecycle-management/supporting-components/commons/id-generator#uin-generation-filters) with extensions for multi-ID-type support.
 
 ---
 
-## 2. Namespace / Realm
+## 2. ID Type / Realm
 
-- Each consuming application is assigned a **namespace** (e.g., `social_id`, `farmer_id`, `health_id`).
-- Namespaces are **pre-configured** (via config file / environment), not created via API.
-- Each namespace has **one configurable parameter: ID length** (up to 32 digits).
-- All ID generation/filter rules are **global** (same across all namespaces).
-- The **same numeric ID may exist in multiple namespaces** — pools are fully independent.
+- Each consuming application is assigned an **ID type** (e.g., `social_id`, `farmer_id`, `health_id`).
+- ID types are **pre-configured** (via config file / environment), not created via API.
+- Each ID type has **one configurable parameter: ID length** (up to 32 digits).
+- All ID generation/filter rules are **global** (same across all ID types).
+- The **same numeric ID may exist in multiple ID types** — pools are fully independent.
 
-### 2.1 Adding a Namespace
+### 2.1 Adding an ID Type
 
-- Add the new namespace to the configuration file (YAML / Helm values).
+- Add the new ID type to the configuration file (YAML / Helm values).
 - Perform a rolling restart of pods (e.g., `kubectl rollout restart` or Helm upgrade).
-- On startup, the service auto-creates the database table for the new namespace (`CREATE TABLE IF NOT EXISTS`). Existing namespace tables are untouched — all previously generated and issued IDs are fully preserved.
-- The service blocks until the minimum pool is generated for the new namespace, then begins serving requests.
+- On startup, the service auto-creates the database table for the new ID type (`CREATE TABLE IF NOT EXISTS`). Existing ID type tables are untouched — all previously generated and issued IDs are fully preserved.
+- The service blocks until the minimum pool is generated for the new ID type, then begins serving requests.
 
-### 2.2 Removing a Namespace
+### 2.2 Removing an ID Type
 
-- Remove the namespace from the configuration file and restart pods.
-- The service will no longer serve requests for the removed namespace — it returns `IDG-003 Unknown namespace`.
-- The database table for the removed namespace is **not** automatically dropped. This is a safety measure — a configuration typo should not wipe millions of IDs.
+- Remove the ID type from the configuration file and restart pods.
+- The service will no longer serve requests for the removed ID type — it returns `IDG-003 Unknown ID type`.
+- The database table for the removed ID type is **not** automatically dropped. This is a safety measure — a configuration typo should not wipe millions of IDs.
 - If storage reclaim is needed, a DBA can manually drop the orphaned table.
 
 ---
@@ -43,7 +43,7 @@ A FastAPI-based service that generates unique, random numeric IDs for multiple c
 ### 3.1 Structure
 
 - **Numeric only** — no alphabets or special characters.
-- **Length**: Configurable per namespace, maximum 32 digits.
+- **Length**: Configurable per ID type, maximum 32 digits.
 - **Last digit**: Verhoeff checksum — the generator produces `(length - 1)` random digits and appends 1 checksum digit.
 - **Randomness**: Python `secrets` module (cryptographically secure). No periodic re-seeding needed.
 
@@ -53,7 +53,7 @@ Every generated ID must pass **all 10 filters**. Filter threshold parameters are
 
 | # | Filter | Description | Config Key |
 |---|--------|-------------|------------|
-| 1 | **Length** | ID must be exactly the configured length for its namespace | Per-namespace `id_length` |
+| 1 | **Length** | ID must be exactly the configured length for its ID type | Per-ID-type `id_length` |
 | 2 | **Not-Start-With** | ID must not begin with specified digits (e.g., 0, 1) | `not_start_with` (list) |
 | 3 | **Sequence** | No ascending/descending consecutive sequences beyond limit (e.g., limit=3 → "123" rejected, "12" allowed) | `sequence_limit` |
 | 4 | **Repeating Digit** | No same digit repeating within N positions (e.g., limit=2 → "11" and "1x1" rejected) | `repeating_limit` |
@@ -97,13 +97,13 @@ No callback or confirmation from the calling service is required.
 
 ## 5. Pool Management
 
-- The service maintains a **pre-generated pool** of AVAILABLE IDs per namespace in PostgreSQL.
+- The service maintains a **pre-generated pool** of AVAILABLE IDs per ID type in PostgreSQL.
 - **Background replenishment**: A background task monitors pool levels and generates new IDs when the count of AVAILABLE IDs drops below a configurable threshold.
-  - `pool_min_threshold` — Trigger generation when AVAILABLE count falls below this (global, same for all namespaces).
+  - `pool_min_threshold` — Trigger generation when AVAILABLE count falls below this (global, same for all ID types).
   - `pool_generation_batch_size` — Number of IDs to generate per replenishment cycle (global).
   - Both values are configurable; exact numbers to be decided later.
-- **No archive table** — At an expected scale of up to 50 million IDs per namespace, a single table with a status column is sufficient.
-- **Uniqueness**: Every generated ID is checked against all existing IDs (both AVAILABLE and TAKEN) in its namespace before being added to the pool.
+- **No archive table** — At an expected scale of up to 50 million IDs per ID type, a single table with a status column is sufficient.
+- **Uniqueness**: Every generated ID is checked against all existing IDs (both AVAILABLE and TAKEN) in its ID type before being added to the pool.
 
 ---
 
@@ -111,7 +111,7 @@ No callback or confirmation from the calling service is required.
 
 - Multiple pods can run simultaneously.
 - **Issuing IDs**: `SELECT ... FOR UPDATE` row-level locking in PostgreSQL ensures no two pods issue the same ID.
-- **Generating IDs**: Database unique constraint on `(namespace, id)` prevents duplicates. If a concurrent insert causes a conflict, the conflicting ID is silently skipped.
+- **Generating IDs**: Database unique constraint on `(id_type, id)` prevents duplicates. If a concurrent insert causes a conflict, the conflicting ID is silently skipped.
 - No application-level distributed locks required — the database is the single source of truth.
 
 ---
@@ -119,7 +119,7 @@ No callback or confirmation from the calling service is required.
 ## 7. ID Space Exhaustion
 
 - When a caller requests an ID and the pool is empty **and** no more valid IDs can be generated (full search space exhausted), the service returns a clear error response.
-- The error must indicate that the ID space for that namespace is exhausted.
+- The error must indicate that the ID space for that ID type is exhausted.
 - No warning threshold — only a hard error when fully exhausted.
 - **Note**: The effective ID space is significantly smaller than the raw numeric range due to the generation filters. The raw space is `8 × 10^(id_length - 2)` (first digit restricted to 2-9, last digit is checksum). Filters typically reduce this to 15-60% depending on ID length and filter parameters. Shorter IDs are more heavily constrained (e.g., a 5-digit ID has ~3,600 valid IDs out of 8,000 raw candidates; a 6-digit ID has ~35,000 out of 80,000).
 
@@ -127,7 +127,7 @@ No callback or confirmation from the calling service is required.
 
 ## 8. API Design
 
-Following MOSIP's response wrapper style, adapted with namespace support. All APIs are **OpenAPI 3.1 compliant**. All responses use `Content-Type: application/json`.
+Following MOSIP's response wrapper style, adapted with ID type support. All APIs are **OpenAPI 3.1 compliant**. All responses use `Content-Type: application/json`.
 
 ### 8.1 OpenAPI Specification
 
@@ -162,7 +162,7 @@ All endpoints return a consistent MOSIP-style envelope with `Content-Type: appli
   "responsetime": "2026-03-27T10:00:00.000Z",
   "response": null,
   "errors": [
-    { "errorCode": "IDG-001", "message": "No IDs available for namespace 'farmer_id'" }
+    { "errorCode": "IDG-001", "message": "No IDs available for ID type 'farmer_id'" }
   ]
 }
 ```
@@ -171,7 +171,7 @@ All endpoints return a consistent MOSIP-style envelope with `Content-Type: appli
 
 | Parameter | Type | Pattern | Description |
 |-----------|------|---------|-------------|
-| `{namespace}` | string | `^[a-z][a-z0-9_]{1,63}$` | Lowercase alphanumeric + underscore, starts with letter, max 64 chars |
+| `{id_type}` | string | `^[a-z][a-z0-9_]{1,63}$` | Lowercase alphanumeric + underscore, starts with letter, max 64 chars |
 | `{id}` | string | `^\d{1,32}$` | Digits only, 1–32 characters |
 
 Invalid path parameters are rejected at the routing level with HTTP `422 Unprocessable Entity`.
@@ -180,17 +180,17 @@ Invalid path parameters are rejected at the routing level with HTTP `422 Unproce
 
 | Method | Path | Description | Success HTTP Status |
 |--------|------|-------------|---------------------|
-| `POST` | `/v1/idgenerator/{namespace}/id` | Issue one ID from the namespace pool | `200 OK` |
-| `GET` | `/v1/idgenerator/{namespace}/id/validate/{id}` | Validate an ID's structure (checksum + filter rules) | `200 OK` |
+| `POST` | `/v1/idgenerator/{id_type}/id` | Issue one ID from the ID type pool | `200 OK` |
+| `GET` | `/v1/idgenerator/{id_type}/id/validate/{id}` | Validate an ID's structure (checksum + filter rules) | `200 OK` |
 | `GET` | `/v1/idgenerator/health` | Health check (DB connectivity) | `200 OK` |
 | `GET` | `/v1/idgenerator/version` | Returns service version, build info | `200 OK` |
-| `GET` | `/v1/idgenerator/config` | Returns active configuration (namespaces, filter rules) | `200 OK` |
+| `GET` | `/v1/idgenerator/config` | Returns active configuration (ID types, filter rules) | `200 OK` |
 
-> **Note on `POST` for Issue ID**: Issuing an ID is a state-changing operation (AVAILABLE → TAKEN). Per HTTP/REST semantics, `GET` must be safe and idempotent. We use `POST` to correctly signal that this operation modifies state. No request body is required — the namespace is specified in the path.
+> **Note on `POST` for Issue ID**: Issuing an ID is a state-changing operation (AVAILABLE → TAKEN). Per HTTP/REST semantics, `GET` must be safe and idempotent. We use `POST` to correctly signal that this operation modifies state. No request body is required — the ID type is specified in the path.
 
-#### Issue ID — `POST /v1/idgenerator/{namespace}/id`
+#### Issue ID — `POST /v1/idgenerator/{id_type}/id`
 
-Issues a single AVAILABLE ID from the specified namespace pool and marks it as TAKEN. No request body required.
+Issues a single AVAILABLE ID from the specified ID type pool and marks it as TAKEN. No request body required.
 
 **Response (HTTP `200 OK`)**:
 ```json
@@ -211,13 +211,13 @@ Issues a single AVAILABLE ID from the specified namespace pool and marks it as T
 |-----------|-------------|------------|
 | Pool temporarily empty (replenishment in progress) | `503 Service Unavailable` | `IDG-001` |
 | ID space permanently exhausted | `410 Gone` | `IDG-002` |
-| Unknown namespace | `404 Not Found` | `IDG-003` |
+| Unknown ID type | `404 Not Found` | `IDG-003` |
 
-#### Validate ID — `GET /v1/idgenerator/{namespace}/id/validate/{id}`
+#### Validate ID — `GET /v1/idgenerator/{id_type}/id/validate/{id}`
 
-Validates whether a given ID is **structurally valid** for the specified namespace. This is a purely mathematical/structural check — it verifies:
+Validates whether a given ID is **structurally valid** for the specified ID type. This is a purely mathematical/structural check — it verifies:
 1. The Verhoeff checksum digit is correct.
-2. The ID passes all 10 filter rules for the namespace (correct length, no forbidden sequences, etc.).
+2. The ID passes all 10 filter rules for the ID type (correct length, no forbidden sequences, etc.).
 
 It does **not** check whether the ID exists in the database or whether it is AVAILABLE/TAKEN.
 
@@ -241,7 +241,7 @@ It does **not** check whether the ID exists in the database or whether it is AVA
 
 | Condition | HTTP Status | Error Code |
 |-----------|-------------|------------|
-| Unknown namespace | `404 Not Found` | `IDG-003` |
+| Unknown ID type | `404 Not Found` | `IDG-003` |
 
 #### Health Check — `GET /v1/idgenerator/health`
 
@@ -277,7 +277,7 @@ Returns the service version and build metadata. Used by test frameworks and moni
 
 #### Config — `GET /v1/idgenerator/config`
 
-Returns the active service configuration including all configured namespaces and their ID lengths, plus the global filter rules. Useful for test frameworks and diagnostics to discover configured namespaces without hardcoding names.
+Returns the active service configuration including all configured ID types and their ID lengths, plus the global filter rules. Useful for test frameworks and diagnostics to discover configured ID types without hardcoding names.
 
 **Response (HTTP `200 OK`)**:
 ```json
@@ -286,7 +286,7 @@ Returns the active service configuration including all configured namespaces and
   "version": "1.0",
   "responsetime": "2026-03-28T10:00:00.000Z",
   "response": {
-    "namespaces": {
+    "id_types": {
       "farmer_id": { "id_length": 10 },
       "household_id": { "id_length": 10 }
     },
@@ -310,7 +310,7 @@ Returns the active service configuration including all configured namespaces and
 | HTTP Status | Meaning | When Used |
 |-------------|---------|-----------|
 | `200 OK` | Request succeeded | Successful issue, validate, health, version |
-| `404 Not Found` | Resource not found | Unknown namespace (`IDG-003`) |
+| `404 Not Found` | Resource not found | Unknown ID type (`IDG-003`) |
 | `410 Gone` | Resource permanently unavailable | ID space exhausted (`IDG-002`) |
 | `422 Unprocessable Entity` | Validation error | Invalid path parameter format |
 | `503 Service Unavailable` | Temporarily unavailable | Pool empty (`IDG-001`), health check failing |
@@ -320,8 +320,8 @@ Returns the active service configuration including all configured namespaces and
 | Code | HTTP Status | Description |
 |------|-------------|-------------|
 | `IDG-001` | `503` | No IDs available in pool (temporary — replenishment in progress) |
-| `IDG-002` | `410` | ID space exhausted for namespace (permanent — no more IDs possible) |
-| `IDG-003` | `404` | Unknown namespace |
+| `IDG-002` | `410` | ID space exhausted for ID type (permanent — no more IDs possible) |
+| `IDG-003` | `404` | Unknown ID type |
 | `IDG-004` | — | Invalid ID (returned in validate response body, not as HTTP error) |
 
 ---
@@ -344,8 +344,8 @@ id_generator:
   pool_min_threshold: <TBD>
   pool_generation_batch_size: <TBD>
 
-  # Namespaces
-  namespaces:
+  # ID types
+  id_types:
     social_id:
       id_length: 10
     farmer_id:
@@ -358,10 +358,10 @@ id_generator:
 
 ## 10. Database Schema (Conceptual)
 
-One table per namespace, auto-created on startup:
+One table per ID type, auto-created on startup:
 
 ```sql
--- Example for namespace "social_id"
+-- Example for ID type "social_id"
 TABLE id_pool_social_id (
     id_value        VARCHAR(32)     PRIMARY KEY,
     status          VARCHAR(16)     NOT NULL DEFAULT 'AVAILABLE',  -- 'AVAILABLE' or 'TAKEN'
@@ -373,8 +373,8 @@ CREATE INDEX idx_social_id_available ON id_pool_social_id (status)
     WHERE status = 'AVAILABLE';
 ```
 
-- Each namespace gets its own table (`id_pool_{namespace}`).
-- No `namespace` column needed — the table name is the namespace.
+- Each ID type gets its own table (`id_pool_{id_type}`).
+- No `id_type` column needed — the table name is the ID type.
 - Tables are auto-created on startup via `CREATE TABLE IF NOT EXISTS`.
 
 ---

@@ -1,7 +1,7 @@
 """
 Category 4: Response Time Tests (PRF-001 through PRF-004)
 
-Measure API response latency. Run against the perf namespace (length=10,
+Measure API response latency. Run against the perf ID type (length=10,
 large pool) which should NOT be exhausted during testing.
 
 Performance thresholds are configurable and intentionally generous
@@ -46,13 +46,13 @@ class TestPRF001:
     """Issue 100 IDs sequentially and verify response time percentiles."""
 
     async def test_issue_id_response_time(
-        self, client, perf_namespace, issue_id
+        self, client, perf_id_type, issue_id
     ):
         durations = []
 
         for _ in range(100):
             start = time.perf_counter()
-            resp = await issue_id(client, perf_namespace)
+            resp = await issue_id(client, perf_id_type)
             elapsed = time.perf_counter() - start
 
             assert resp.status_code == 200, (
@@ -92,10 +92,10 @@ class TestPRF002:
     """Issue 50 IDs concurrently and verify total wall-clock time."""
 
     async def test_issue_id_concurrent_response_time(
-        self, client, perf_namespace, issue_id
+        self, client, perf_id_type, issue_id
     ):
         async def _issue_one():
-            resp = await issue_id(client, perf_namespace)
+            resp = await issue_id(client, perf_id_type)
             assert resp.status_code == 200
             return resp
 
@@ -122,10 +122,10 @@ class TestPRF003:
     """Validate a single ID 100 times and verify response time."""
 
     async def test_validate_id_response_time(
-        self, client, perf_namespace, issue_id, validate_id
+        self, client, perf_id_type, issue_id, validate_id
     ):
         # First get a valid ID to validate
-        resp = await issue_id(client, perf_namespace)
+        resp = await issue_id(client, perf_id_type)
         assert resp.status_code == 200
         test_id = resp.json()["response"]["id"]
 
@@ -133,7 +133,7 @@ class TestPRF003:
 
         for _ in range(100):
             start = time.perf_counter()
-            resp = await validate_id(client, perf_namespace, test_id)
+            resp = await validate_id(client, perf_id_type, test_id)
             elapsed = time.perf_counter() - start
 
             assert resp.status_code == 200

@@ -45,7 +45,7 @@ def passes_all_filters(candidate: str, id_length: int, config: dict) -> bool:
 
     Args:
         candidate: The candidate ID string.
-        id_length: Expected length for this namespace.
+        id_length: Expected length for this ID type.
         config: Filter configuration dict.
 
     Returns:

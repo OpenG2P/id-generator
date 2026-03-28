@@ -15,7 +15,7 @@ from fastapi import FastAPI
 from .api.router import router
 from .config import get_settings
 from .db import dispose_engine, init_engine
-from .models import create_namespace_table
+from .models import create_id_type_table
 from .pool.manager import ensure_minimum_pool, pool_replenishment_loop
 
 logging.basicConfig(
@@ -44,23 +44,23 @@ async def lifespan(app: FastAPI):
     logger.info("Initializing database engine...")
     engine = init_engine()
 
-    # 2. Create tables and fill pools for each namespace
-    for namespace, ns_config in settings.id_generator.namespaces.items():
+    # 2. Create tables and fill pools for each ID type
+    for id_type, type_config in settings.id_generator.id_types.items():
         logger.info(
-            "Setting up namespace '%s' (id_length=%d)...",
-            namespace,
-            ns_config.id_length,
+            "Setting up ID type '%s' (id_length=%d)...",
+            id_type,
+            type_config.id_length,
         )
 
         # Create table and index if they don't exist
-        await create_namespace_table(engine, namespace)
+        await create_id_type_table(engine, id_type)
 
         # Fill pool to minimum threshold (blocking)
-        await ensure_minimum_pool(namespace, settings)
+        await ensure_minimum_pool(id_type, settings)
 
     # 3. Mark startup complete (health endpoint returns 200)
     _startup_complete = True
-    logger.info("Startup complete. All namespace pools are ready.")
+    logger.info("Startup complete. All ID type pools are ready.")
 
     # 4. Start background replenishment loop
     _background_task = asyncio.create_task(
@@ -91,7 +91,7 @@ async def lifespan(app: FastAPI):
 # Create the FastAPI application
 app = FastAPI(
     title="ID Generator",
-    description="Unique numeric ID generator service with multi-namespace support",
+    description="Unique numeric ID generator service with multi-ID-type support",
     version="0.1.0",
     lifespan=lifespan,
 )

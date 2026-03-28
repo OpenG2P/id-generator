@@ -50,12 +50,12 @@ questions:
   label: Database Secret Password Key
   group: Database
 
-# Namespaces
-- variable: idGenerator.appConfig.namespaces
-  description: "ID generation namespaces and their configuration. Each namespace gets its own DB table. Example: farmer_id with idLength 6."
+# ID Types
+- variable: idGenerator.appConfig.idTypes
+  description: "ID generation types and their configuration. Each ID type gets its own DB table. Example: farmer_id with idLength 6."
   type: map
-  label: Namespaces
-  group: Namespaces
+  label: ID Types
+  group: ID Types
 
 # Pool Management
 - variable: idGenerator.appConfig.poolMinThreshold

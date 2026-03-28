@@ -28,7 +28,7 @@
   markers: [exhaustive, slow]
   file: test_exhaustive.py
   description: >
-    Same as EXH-001 for test_ns_2. Verifies namespace isolation.
+    Same as EXH-001 for test_ns_2. Verifies ID type isolation.
 
 - id: EXH-003
   name: test_ids_not_sequential_ns1
@@ -65,7 +65,7 @@
     using chi-squared goodness-of-fit test.
 
 - id: EXH-007
-  name: test_namespace_independence
+  name: test_id_type_independence
   category: exhaustive
   markers: [exhaustive]
   file: test_exhaustive.py
@@ -170,7 +170,7 @@
   file: test_filters.py
   description: >
     Construct a 10-digit ID where first 5 digits == last 5 digits.
-    Validate against perf namespace. Assert valid=false.
+    Validate against perf ID type. Assert valid=false.
 
 - id: FLT-011
   name: test_first_equals_reverse_last_rejected
@@ -179,7 +179,7 @@
   file: test_filters.py
   description: >
     Construct a 10-digit ID where first 5 == reverse(last 5).
-    Validate against perf namespace. Assert valid=false.
+    Validate against perf ID type. Assert valid=false.
 
 - id: FLT-012
   name: test_restricted_number_rejected
@@ -197,7 +197,7 @@
   file: test_filters.py
   description: >
     Construct a 10-digit ID containing "142857". Validate against perf
-    namespace. Assert valid=false.
+    ID type. Assert valid=false.
 
 - id: FLT-014
   name: test_wrong_length_rejected
@@ -205,7 +205,7 @@
   markers: [filters]
   file: test_filters.py
   description: >
-    Submit 4-digit and 6-digit IDs to a 5-digit namespace.
+    Submit 4-digit and 6-digit IDs to a 5-digit ID type.
     Assert valid=false for both.
 
 - id: FLT-015
@@ -248,7 +248,7 @@
 # =========================================================================
 # Category 3: Space Exhaustion (4 tests)
 # File: test_exhaustion.py
-# Phase: 4 (runs after exhaustive tests drain the namespaces)
+# Phase: 4 (runs after exhaustive tests drain the ID types)
 # =========================================================================
 
 - id: EXS-001
@@ -268,13 +268,13 @@
     Subsequent requests still return HTTP 410 / IDG-002 (not transient).
 
 - id: EXS-003
-  name: test_other_namespace_unaffected
+  name: test_other_id_type_unaffected
   category: exhaustion
   markers: [exhaustion]
   file: test_exhaustion.py
   description: >
-    Exhaustion in test_ns_1 does not affect perf namespace. POST to
-    perf namespace returns HTTP 200.
+    Exhaustion in test_ns_1 does not affect perf ID type. POST to
+    perf ID type returns HTTP 200.
 
 - id: EXS-004
   name: test_exhaustion_response_format
@@ -288,7 +288,7 @@
 # =========================================================================
 # Category 4: Response Time (4 tests)
 # File: test_performance.py
-# Phase: 5 (independent, uses perf namespace)
+# Phase: 5 (independent, uses perf ID type)
 # =========================================================================
 
 - id: PRF-001
@@ -348,20 +348,20 @@
     and response.valid (boolean).
 
 - id: API-003
-  name: test_unknown_namespace_returns_404
+  name: test_unknown_id_type_returns_404
   category: api_contract
   markers: [api_contract]
   file: test_api_contract.py
   description: >
-    POST Issue ID with unknown namespace returns HTTP 404, IDG-003.
+    POST Issue ID with unknown ID type returns HTTP 404, IDG-003.
 
 - id: API-004
-  name: test_validate_unknown_namespace_returns_404
+  name: test_validate_unknown_id_type_returns_404
   category: api_contract
   markers: [api_contract]
   file: test_api_contract.py
   description: >
-    GET Validate with unknown namespace returns HTTP 404, IDG-003.
+    GET Validate with unknown ID type returns HTTP 404, IDG-003.
 
 - id: API-005
   name: test_health_endpoint_returns_healthy
@@ -385,7 +385,7 @@
   markers: [api_contract]
   file: test_api_contract.py
   description: >
-    Issued ID length matches namespace config (5 for test_ns_1).
+    Issued ID length matches ID type config (5 for test_ns_1).
 
 - id: API-008
   name: test_issued_id_passes_validation
@@ -422,12 +422,12 @@
     GET (not POST) to Issue ID endpoint returns HTTP 405.
 
 - id: API-012
-  name: test_invalid_namespace_format_returns_422
+  name: test_invalid_id_type_format_returns_422
   category: api_contract
   markers: [api_contract]
   file: test_api_contract.py
   description: >
-    POST with invalid namespace format (digits-first, uppercase, spaces)
+    POST with invalid ID type format (digits-first, uppercase, spaces)
     returns HTTP 422.
 
 - id: API-013

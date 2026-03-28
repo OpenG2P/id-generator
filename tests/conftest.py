@@ -2,7 +2,7 @@
 Shared fixtures and CLI option registration for ID Generator tests.
 
 All tests are API-level integration tests against a running service.
-Namespace names are auto-discovered from the service's /config endpoint.
+ID type names are auto-discovered from the service's /config endpoint.
 """
 
 import os
@@ -52,9 +52,9 @@ async def client(base_url):
 
 @pytest_asyncio.fixture(scope="session", loop_scope="session")
 async def service_config(client):
-    """Fetch and cache the service configuration (namespaces, filter rules).
+    """Fetch and cache the service configuration (ID types, filter rules).
 
-    All namespace-dependent tests use this to discover namespace names
+    All ID-type-dependent tests use this to discover ID type names
     and their id_lengths dynamically.
     """
     resp = await client.get("/v1/idgenerator/config")
@@ -66,66 +66,66 @@ async def service_config(client):
 
 
 @pytest.fixture(scope="session")
-def namespaces(service_config):
-    """Dict of all configured namespaces: {name: {id_length: N}}."""
-    return service_config["namespaces"]
+def id_types(service_config):
+    """Dict of all configured ID types: {name: {id_length: N}}."""
+    return service_config["id_types"]
 
 
 @pytest.fixture(scope="session")
-def namespace_1(namespaces):
-    """First namespace (smallest id_length, for exhaustive tests).
+def id_type_1(id_types):
+    """First ID type (smallest id_length, for exhaustive tests).
 
-    Picks the first namespace with the smallest id_length.
+    Picks the first ID type with the smallest id_length.
     """
-    sorted_ns = sorted(namespaces.items(), key=lambda x: x[1]["id_length"])
+    sorted_ns = sorted(id_types.items(), key=lambda x: x[1]["id_length"])
     name = sorted_ns[0][0]
     return name
 
 
 @pytest.fixture(scope="session")
-def namespace_2(namespaces, namespace_1):
-    """Second namespace (smallest id_length, different from namespace_1).
+def id_type_2(id_types, id_type_1):
+    """Second ID type (smallest id_length, different from id_type_1).
 
-    Picks the second namespace with the smallest id_length for
-    namespace independence testing.
+    Picks the second ID type with the smallest id_length for
+    ID type independence testing.
     """
-    sorted_ns = sorted(namespaces.items(), key=lambda x: x[1]["id_length"])
+    sorted_ns = sorted(id_types.items(), key=lambda x: x[1]["id_length"])
     for name, _ in sorted_ns:
-        if name != namespace_1:
+        if name != id_type_1:
             return name
-    pytest.skip("Need at least 2 namespaces for this test")
+    pytest.skip("Need at least 2 ID types for this test")
 
 
 @pytest.fixture(scope="session")
-def perf_namespace(namespaces, namespace_1, namespace_2):
-    """Performance test namespace (largest id_length, large pool).
+def perf_id_type(id_types, id_type_1, id_type_2):
+    """Performance test ID type (largest id_length, large pool).
 
-    Picks the namespace with the largest id_length for performance
+    Picks the ID type with the largest id_length for performance
     tests that need a large pool that won't exhaust.
     """
     sorted_ns = sorted(
-        namespaces.items(), key=lambda x: x[1]["id_length"], reverse=True
+        id_types.items(), key=lambda x: x[1]["id_length"], reverse=True
     )
     name = sorted_ns[0][0]
     return name
 
 
 @pytest.fixture(scope="session")
-def ns1_id_length(namespaces, namespace_1):
-    """ID length configured for namespace_1."""
-    return namespaces[namespace_1]["id_length"]
+def ns1_id_length(id_types, id_type_1):
+    """ID length configured for id_type_1."""
+    return id_types[id_type_1]["id_length"]
 
 
 @pytest.fixture(scope="session")
-def ns2_id_length(namespaces, namespace_2):
-    """ID length configured for namespace_2."""
-    return namespaces[namespace_2]["id_length"]
+def ns2_id_length(id_types, id_type_2):
+    """ID length configured for id_type_2."""
+    return id_types[id_type_2]["id_length"]
 
 
 @pytest.fixture(scope="session")
-def perf_id_length(namespaces, perf_namespace):
-    """ID length configured for perf_namespace."""
-    return namespaces[perf_namespace]["id_length"]
+def perf_id_length(id_types, perf_id_type):
+    """ID length configured for perf_id_type."""
+    return id_types[perf_id_type]["id_length"]
 
 
 @pytest_asyncio.fixture(scope="session", loop_scope="session")
@@ -157,28 +157,28 @@ async def service_version(client):
 
 @pytest.fixture(scope="session")
 def ns1_issued_ids():
-    """List of all IDs issued from namespace_1, in issuance order.
+    """List of all IDs issued from id_type_1, in issuance order.
     Populated by EXH-001."""
     return []
 
 
 @pytest.fixture(scope="session")
 def ns2_issued_ids():
-    """List of all IDs issued from namespace_2, in issuance order.
+    """List of all IDs issued from id_type_2, in issuance order.
     Populated by EXH-002."""
     return []
 
 
 @pytest.fixture(scope="session")
 def ns1_exhausted():
-    """Tracks whether namespace_1 has been fully exhausted.
+    """Tracks whether id_type_1 has been fully exhausted.
     Set to True by EXH-001."""
     return {"exhausted": False}
 
 
 @pytest.fixture(scope="session")
 def ns2_exhausted():
-    """Tracks whether namespace_2 has been fully exhausted.
+    """Tracks whether id_type_2 has been fully exhausted.
     Set to True by EXH-002."""
     return {"exhausted": False}
 
@@ -191,14 +191,14 @@ def ns2_exhausted():
 @pytest.fixture(scope="session")
 def issue_id():
     """
-    Callable fixture that issues an ID from a namespace.
+    Callable fixture that issues an ID from an ID type.
 
     Usage:
         resp = await issue_id(client, "farmer_id")
     """
 
-    async def _issue(cl: httpx.AsyncClient, namespace: str):
-        return await cl.post(f"/v1/idgenerator/{namespace}/id")
+    async def _issue(cl: httpx.AsyncClient, id_type: str):
+        return await cl.post(f"/v1/idgenerator/{id_type}/id")
 
     return _issue
 
@@ -206,17 +206,17 @@ def issue_id():
 @pytest.fixture(scope="session")
 def validate_id():
     """
-    Callable fixture that validates an ID against a namespace.
+    Callable fixture that validates an ID against an ID type.
 
     Usage:
         resp = await validate_id(client, "farmer_id", "57382")
     """
 
     async def _validate(
-        cl: httpx.AsyncClient, namespace: str, id_value: str
+        cl: httpx.AsyncClient, id_type: str, id_value: str
     ):
         return await cl.get(
-            f"/v1/idgenerator/{namespace}/id/validate/{id_value}"
+            f"/v1/idgenerator/{id_type}/id/validate/{id_value}"
         )
 
     return _validate

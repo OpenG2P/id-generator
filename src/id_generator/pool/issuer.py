@@ -27,8 +27,8 @@ class PoolEmptyError(Exception):
     pass
 
 
-async def issue_one(namespace: str) -> str:
-    """Issue a single ID from the namespace pool.
+async def issue_one(id_type: str) -> str:
+    """Issue a single ID from the ID type pool.
 
     Atomically selects an available ID and marks it as TAKEN.
     Uses FOR UPDATE SKIP LOCKED for zero contention between pods.
@@ -37,7 +37,7 @@ async def issue_one(namespace: str) -> str:
     (e.g., deadlocks).
 
     Args:
-        namespace: The namespace to issue from.
+        id_type: The ID type to issue from.
 
     Returns:
         The issued ID string.
@@ -45,7 +45,7 @@ async def issue_one(namespace: str) -> str:
     Raises:
         PoolEmptyError: If no AVAILABLE IDs are in the pool.
     """
-    tbl = table_name(namespace)
+    tbl = table_name(id_type)
 
     select_sql = text(f"""
         SELECT id_value FROM {tbl}
@@ -71,7 +71,7 @@ async def issue_one(namespace: str) -> str:
 
                     if row is None:
                         raise PoolEmptyError(
-                            f"No available IDs in namespace '{namespace}'"
+                            f"No available IDs in ID type '{id_type}'"
                         )
 
                     id_value = row[0]
@@ -84,8 +84,8 @@ async def issue_one(namespace: str) -> str:
         except Exception as e:
             last_error = e
             logger.warning(
-                "Namespace '%s': issue attempt %d/%d failed: %s",
-                namespace,
+                "ID type '%s': issue attempt %d/%d failed: %s",
+                id_type,
                 attempt + 1,
                 MAX_RETRIES,
                 e,

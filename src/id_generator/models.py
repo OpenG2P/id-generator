@@ -1,8 +1,8 @@
 """
-Database table management for table-per-namespace strategy.
+Database table management for table-per-id-type strategy.
 
 Tables are created dynamically on startup using CREATE TABLE IF NOT EXISTS.
-Namespace names are validated to prevent SQL injection.
+ID type names are validated to prevent SQL injection.
 """
 
 import re
@@ -10,39 +10,39 @@ import re
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-# Regex for valid namespace names (matches the API path parameter constraint)
-_NAMESPACE_PATTERN = re.compile(r"^[a-z][a-z0-9_]{1,63}$")
+# Regex for valid ID type names (matches the API path parameter constraint)
+_ID_TYPE_PATTERN = re.compile(r"^[a-z][a-z0-9_]{1,63}$")
 
 
-def validate_namespace(namespace: str) -> None:
-    """Validate a namespace name against the allowed pattern.
+def validate_id_type(id_type: str) -> None:
+    """Validate an ID type name against the allowed pattern.
 
     Raises:
-        ValueError: If the namespace name is invalid.
+        ValueError: If the ID type name is invalid.
     """
-    if not _NAMESPACE_PATTERN.match(namespace):
+    if not _ID_TYPE_PATTERN.match(id_type):
         raise ValueError(
-            f"Invalid namespace name '{namespace}'. Must match "
+            f"Invalid ID type name '{id_type}'. Must match "
             f"pattern: ^[a-z][a-z0-9_]{{1,63}}$"
         )
 
 
-def table_name(namespace: str) -> str:
-    """Get the table name for a namespace."""
-    validate_namespace(namespace)
-    return f"id_pool_{namespace}"
+def table_name(id_type: str) -> str:
+    """Get the table name for an ID type."""
+    validate_id_type(id_type)
+    return f"id_pool_{id_type}"
 
 
-async def create_namespace_table(engine: AsyncEngine, namespace: str) -> None:
-    """Create the ID pool table and index for a namespace if they
+async def create_id_type_table(engine: AsyncEngine, id_type: str) -> None:
+    """Create the ID pool table and index for an ID type if they
     don't already exist.
 
     Args:
         engine: The async SQLAlchemy engine.
-        namespace: The namespace name (validated).
+        id_type: The ID type name (validated).
     """
-    validate_namespace(namespace)
-    tbl = table_name(namespace)
+    validate_id_type(id_type)
+    tbl = table_name(id_type)
 
     create_table_sql = f"""
         CREATE TABLE IF NOT EXISTS {tbl} (
@@ -54,7 +54,7 @@ async def create_namespace_table(engine: AsyncEngine, namespace: str) -> None:
     """
 
     create_index_sql = f"""
-        CREATE INDEX IF NOT EXISTS idx_{namespace}_available
+        CREATE INDEX IF NOT EXISTS idx_{id_type}_available
         ON {tbl} (status) WHERE status = 'AVAILABLE'
     """
 

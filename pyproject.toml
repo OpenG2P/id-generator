@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "id-generator"
 version = "0.1.0"
-description = "Unique numeric ID generator service with pre-generated pools and multi-namespace support"
+description = "Unique numeric ID generator service with pre-generated pools and multi-ID-type support"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115",
