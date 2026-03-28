@@ -307,7 +307,44 @@ export ID_GENERATOR__ID_TYPES__SOCIAL_ID__ID_LENGTH=10
 
 ## 9. Running with Docker
 
-### Build the image
+### Option A: Docker Compose (recommended)
+
+Docker Compose starts both PostgreSQL and the ID Generator service with a
+single command. No manual database setup required.
+
+```bash
+# Start everything (builds the image on first run)
+docker compose up --build
+
+# Or run in background
+docker compose up --build -d
+```
+
+This will:
+1. Start a PostgreSQL 16 container with a persistent volume
+2. Wait for PostgreSQL to be healthy
+3. Build the ID Generator image and start it on port 8000
+
+To stop:
+```bash
+docker compose down          # Stop containers (data preserved in volume)
+docker compose down -v       # Stop and delete PostgreSQL data volume
+```
+
+To use a custom config file, mount it as a volume. Add this under the
+`id-generator` service in `docker-compose.yaml`:
+
+```yaml
+    volumes:
+      - ./my-config.yaml:/app/config/default.yaml:ro
+```
+
+### Option B: Docker run (with existing database)
+
+Use this when you already have a PostgreSQL instance running (local install,
+managed cloud DB, etc.).
+
+**Build the image:**
 
 ```bash
 docker build -t id-generator:latest \
@@ -315,10 +352,9 @@ docker build -t id-generator:latest \
   --build-arg BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ") .
 ```
 
-### Run the container
+**Run the container:**
 
 ```bash
-# Using the PostgreSQL container from Step 1
 docker run -p 8000:8000 \
   -e DB_HOST=host.docker.internal \
   -e DB_PORT=5432 \
@@ -332,9 +368,7 @@ docker run -p 8000:8000 \
 > running on the host machine (macOS/Windows). On Linux, use `--network=host`
 > or the host's IP address instead.
 
-### Custom config via volume mount
-
-To use a different config file without rebuilding:
+**Custom config via volume mount:**
 
 ```bash
 docker run -p 8000:8000 \
@@ -346,11 +380,11 @@ docker run -p 8000:8000 \
 
 ### Docker environment variables
 
-All environment variables from Section 8 are supported. Additionally:
+All environment variables from Section 8 are supported. Additionally, the
+Docker image accepts these Uvicorn-specific variables:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `UVICORN_HOST` | `0.0.0.0` | Bind address |
 | `UVICORN_PORT` | `8000` | Bind port |
 | `UVICORN_WORKERS` | `1` | Number of worker processes |
 | `UVICORN_LOG_LEVEL` | `info` | Log level (`debug`, `info`, `warning`, `error`) |
