@@ -165,8 +165,19 @@ async def try_immediate_replenish(namespace: str, settings: Settings) -> bool:
     )
 
     if ids:
-        await _insert_batch(namespace, ids)
-        return True
+        inserted = await _insert_batch(namespace, ids)
+        if inserted > 0:
+            return True
+        # All generated IDs already exist in DB — space is effectively
+        # exhausted even though in-memory generation succeeded.
+        logger.warning(
+            "Namespace '%s': generated %d IDs but 0 were new "
+            "(all already exist in DB). Space is exhausted.",
+            namespace,
+            len(ids),
+        )
+        _exhausted[namespace] = True
+        return False
 
     if exhausted:
         _exhausted[namespace] = True
