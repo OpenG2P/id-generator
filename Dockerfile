@@ -50,7 +50,8 @@ ENV DB_HOST=localhost
 ENV DB_PORT=5432
 ENV DB_NAME=idgenerator
 ENV DB_USER=postgres
-ENV DB_PASSWORD=postgres
+# DB_PASSWORD must be provided at runtime via -e or docker-compose
+# No default — prevents secrets from being baked into image layers
 
 # Application config (can be overridden at runtime)
 ENV CONFIG_PATH=/app/config/default.yaml
@@ -75,6 +76,10 @@ RUN pip install --no-cache-dir /tmp/*.whl && \
 # Copy config
 COPY --chown=appuser:appuser config/ /app/config/
 
+# Copy entrypoint script
+COPY --chown=appuser:appuser docker-entrypoint.sh /app/
+RUN chmod +x /app/docker-entrypoint.sh
+
 # Switch to non-root user
 USER appuser
 
@@ -82,12 +87,8 @@ EXPOSE 8000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=5s --start-period=120s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/v1/idgenerator/health')" || exit 1
+    CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/v1/idgenerator/health')"]
 
-# Start the service
-CMD uvicorn id_generator.main:app \
-    --host ${UVICORN_HOST} \
-    --port ${UVICORN_PORT} \
-    --workers ${UVICORN_WORKERS} \
-    --log-level ${UVICORN_LOG_LEVEL} \
-    --loop asyncio
+# JSON-form CMD ensures proper signal forwarding (SIGTERM for graceful shutdown)
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
+CMD []

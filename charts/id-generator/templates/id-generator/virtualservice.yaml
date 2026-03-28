@@ -35,7 +35,11 @@ spec:
     {{- end }}
     route:
     - destination:
+        {{- if .Values.istio.virtualservice.destination }}
         host: {{ include "common.tplvalues.render" (dict "value" .Values.istio.virtualservice.destination "context" $) }}
+        {{- else }}
+        host: {{ include "common.names.fullname" . }}
+        {{- end }}
         port:
           number: {{ include "common.tplvalues.render" (dict "value" .Values.istio.virtualservice.destinationPort "context" $) }}
 {{- end }}

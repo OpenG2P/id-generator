@@ -1,0 +1,37 @@
+{{- if .Values.idGenerator.enabled }}
+{{- $values := .Values.idGenerator -}}
+{{- $context := dict "Values" (merge (deepCopy $values) (dict "global" .Values.global)) "Chart" .Chart "Release" .Release "Files" .Files "Capabilities" .Capabilities -}}
+{{- with $context -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "common.names.fullname" . }}-config
+  labels: {{- include "common.labels.standard" (dict "customLabels" .Values.commonLabels "context" $) | nindent 4 }}
+data:
+  config.yaml: |
+    id_generator:
+      # Filter rules
+      sequence_limit: {{ .Values.appConfig.sequenceLimit }}
+      repeating_limit: {{ .Values.appConfig.repeatingLimit }}
+      repeating_block_limit: {{ .Values.appConfig.repeatingBlockLimit }}
+      conjugative_even_digits_limit: {{ .Values.appConfig.conjugativeEvenDigitsLimit }}
+      digits_group_limit: {{ .Values.appConfig.digitsGroupLimit }}
+      reverse_digits_group_limit: {{ .Values.appConfig.reverseDigitsGroupLimit }}
+      not_start_with: {{ .Values.appConfig.notStartWith | toJson }}
+      restricted_numbers: {{ .Values.appConfig.restrictedNumbers | toJson }}
+
+      # Pool management
+      pool_min_threshold: {{ .Values.appConfig.poolMinThreshold }}
+      pool_generation_batch_size: {{ .Values.appConfig.poolGenerationBatchSize }}
+      pool_check_interval_seconds: {{ .Values.appConfig.poolCheckIntervalSeconds }}
+      exhaustion_max_attempts: {{ .Values.appConfig.exhaustionMaxAttempts }}
+      sub_batch_size: {{ .Values.appConfig.subBatchSize }}
+
+      # Namespaces
+      namespaces:
+        {{- range $name, $ns := .Values.appConfig.namespaces }}
+        {{ $name }}:
+          id_length: {{ $ns.idLength }}
+        {{- end }}
+{{- end -}}
+{{- end }}

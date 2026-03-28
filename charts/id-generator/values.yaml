@@ -52,6 +52,15 @@ idGenerator:
     runAsUser: 1000
     runAsNonRoot: true
 
+  # -- Resource requests and limits for the container.
+  # resources:
+  #   requests:
+  #     cpu: 100m
+  #     memory: 256Mi
+  #   limits:
+  #     cpu: 500m
+  #     memory: 512Mi
+
   service:
     type: ClusterIP
     port: 80
@@ -63,7 +72,7 @@ idGenerator:
       enabled: true
       host: '{{ tpl .Values.idGenerator.hostname $ }}'
       gateway: "internal"
-      destination: '{{ .Release.Name }}-id-generator'
+      destination: ""
       destinationPort: '{{ .Values.idGenerator.service.port }}'
       prefix: /v1/idgenerator/
       rewriteUri: ""
@@ -79,11 +88,54 @@ idGenerator:
         mode: SIMPLE
         credentialName: ""
 
+  # ---------------------------------------------------------------------------
+  # Application configuration — namespaces, filter rules, pool settings
+  # This is rendered as a ConfigMap and mounted into the container.
+  # ---------------------------------------------------------------------------
+  appConfig:
+    # -- Namespaces for ID generation. Each namespace gets its own DB table.
+    # -- Add or remove namespaces here; restart pods to apply.
+    namespaces:
+      farmer_id:
+        idLength: 6
+      household_id:
+        idLength: 6
+      # social_id:
+      #   idLength: 10
+
+    # -- Filter rules (MOSIP UIN spec). Adjust only if you understand the impact.
+    sequenceLimit: 3
+    repeatingLimit: 2
+    repeatingBlockLimit: 2
+    conjugativeEvenDigitsLimit: 3
+    digitsGroupLimit: 5
+    reverseDigitsGroupLimit: 5
+    notStartWith: ["0", "1"]
+    restrictedNumbers: []
+
+    # -- Pool management
+    poolMinThreshold: 1000
+    poolGenerationBatchSize: 5000
+    poolCheckIntervalSeconds: 30
+    exhaustionMaxAttempts: 1000
+    subBatchSize: 10000
+
+  # ---------------------------------------------------------------------------
+  # Environment variables
+  # ---------------------------------------------------------------------------
   envVars:
+    # -- Database connection (derived from global values)
     DB_HOST: '{{ .Values.global.postgresqlHost }}'
     DB_PORT: '{{ .Values.global.idGeneratorDBPort }}'
     DB_NAME: '{{ tpl .Values.global.idGeneratorDB $ }}'
     DB_USER: '{{ tpl .Values.global.idGeneratorDBUser $ }}'
+    # -- Path to config file inside the container (mounted from ConfigMap)
+    CONFIG_PATH: /app/config/config.yaml
+    # -- Uvicorn workers per pod. Increase for higher throughput on multi-core nodes.
+    # UVICORN_WORKERS: "1"
+    # -- Log level: debug, info, warning, error, critical
+    # UVICORN_LOG_LEVEL: "info"
+
   envVarsFrom:
     DB_PASSWORD:
       secretKeyRef:
@@ -131,7 +183,7 @@ idGenerator:
     - 'sh'
     args:
     - '-c'
-    - 'until pg_isready -U ${DB_USER} -h ${DB_HOST} -p ${DB_PORT:-5432} -d ${DB_NAME:-idgenerator}; do sleep 3; done'
+    - 'until psql "postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}" -c "SELECT 1" > /dev/null 2>&1; do echo "Waiting for database ${DB_NAME} to be ready..."; sleep 3; done'
     containerSecurityContext:
       enabled: false
 
