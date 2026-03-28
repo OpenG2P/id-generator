@@ -305,7 +305,59 @@ export ID_GENERATOR__NAMESPACES__SOCIAL_ID__ID_LENGTH=10
 
 ---
 
-## 9. Troubleshooting
+## 9. Running with Docker
+
+### Build the image
+
+```bash
+docker build -t id-generator:latest \
+  --build-arg GIT_COMMIT=$(git rev-parse --short HEAD) \
+  --build-arg BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ") .
+```
+
+### Run the container
+
+```bash
+# Using the PostgreSQL container from Step 1
+docker run -p 8000:8000 \
+  -e DB_HOST=host.docker.internal \
+  -e DB_PORT=5432 \
+  -e DB_NAME=idgenerator \
+  -e DB_USER=postgres \
+  -e DB_PASSWORD=postgres \
+  id-generator:latest
+```
+
+> **Note**: `host.docker.internal` allows the container to reach PostgreSQL
+> running on the host machine (macOS/Windows). On Linux, use `--network=host`
+> or the host's IP address instead.
+
+### Custom config via volume mount
+
+To use a different config file without rebuilding:
+
+```bash
+docker run -p 8000:8000 \
+  -v /path/to/my-config.yaml:/app/config/default.yaml:ro \
+  -e DB_HOST=host.docker.internal \
+  -e DB_PASSWORD=mysecretpassword \
+  id-generator:latest
+```
+
+### Docker environment variables
+
+All environment variables from Section 8 are supported. Additionally:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `UVICORN_HOST` | `0.0.0.0` | Bind address |
+| `UVICORN_PORT` | `8000` | Bind port |
+| `UVICORN_WORKERS` | `1` | Number of worker processes |
+| `UVICORN_LOG_LEVEL` | `info` | Log level (`debug`, `info`, `warning`, `error`) |
+
+---
+
+## 10. Troubleshooting
 
 ### "Config file not found"
 Make sure you run `uvicorn` from the project root directory (where `config/`
