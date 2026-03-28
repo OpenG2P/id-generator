@@ -8,17 +8,30 @@
 
 ## 1. Technology Stack
 
-| Component | Choice | Rationale |
-|-----------|--------|-----------|
-| Language | Python | Team standard |
-| Web Framework | FastAPI (async) | As specified; async-native maps well to I/O-bound workload |
-| DB Driver | `asyncpg` | Native async PostgreSQL driver, best performance |
-| ORM | SQLAlchemy 2.x (async) | Mature async support, Alembic for migrations |
-| Migrations | Alembic | Standard for SQLAlchemy; manages schema structure |
-| Config | Pydantic Settings | Loads from YAML with environment variable overrides |
-| Randomness | Python `secrets` module | Cryptographically secure; no periodic re-seeding needed |
-| Database | PostgreSQL | As specified |
-| Deployment | Kubernetes | Horizontal pod scaling |
+| Component | Choice | License | Rationale |
+|-----------|--------|---------|-----------|
+| Language | Python 3.11+ | PSF License (permissive) | Team standard |
+| Web Framework | FastAPI | MIT | Async-native, maps well to I/O-bound workload |
+| ASGI Server | Uvicorn | BSD-3-Clause | Standard ASGI server for FastAPI |
+| DB Driver | `asyncpg` | Apache 2.0 | Native async PostgreSQL driver, best performance |
+| ORM | SQLAlchemy 2.x (async) | MIT | Mature async support, Alembic for migrations |
+| Migrations | Alembic | MIT | Standard for SQLAlchemy; manages schema structure |
+| Config | Pydantic Settings | MIT | Loads from YAML with environment variable overrides |
+| YAML Parser | PyYAML | MIT | Required for YAML config loading |
+| Randomness | Python `secrets` module | PSF License (stdlib) | Cryptographically secure; no periodic re-seeding needed |
+| Database | PostgreSQL | PostgreSQL License (permissive, BSD-like) | As specified |
+| Deployment | Kubernetes | Apache 2.0 | Horizontal pod scaling |
+
+**Test dependencies:**
+
+| Component | Choice | License | Rationale |
+|-----------|--------|---------|-----------|
+| Test Framework | pytest | MIT | Standard; markers, parametrize, CLI selection |
+| HTTP Client | httpx | BSD-3-Clause | Async HTTP calls for API tests |
+| Async Test Support | pytest-asyncio | Apache 2.0 | Run async test functions in pytest |
+| Test Reporting | pytest-html | MPL 2.0 | HTML test report generation |
+
+All components use **permissive open-source licenses** (MIT, BSD, Apache 2.0, PSF, PostgreSQL, MPL 2.0). No copyleft (GPL) dependencies. Safe for commercial use.
 
 Full async top-to-bottom — no thread pool hacks. FastAPI's async nature maps well to the I/O-bound workload (DB reads/writes).
 
@@ -87,13 +100,34 @@ CREATE INDEX IF NOT EXISTS idx_{namespace}_available
 | Adding a namespace | Just add rows to existing table. | `CREATE TABLE IF NOT EXISTS` on startup. |
 | Code complexity | Single model, namespace is a column. Simpler. | Dynamic table names at runtime. Slightly more complex but manageable via a table factory. |
 
-### 3.3 Table Lifecycle
+### 3.3 Database Connection
 
-- **On startup**: For each namespace in config, run `CREATE TABLE IF NOT EXISTS` and `CREATE INDEX IF NOT EXISTS`. Existing tables are untouched.
+PostgreSQL server is assumed to be **already running and externally managed** (not provisioned by this service). Connection credentials are passed via environment variables:
+
+| Environment Variable | Description | Example |
+|---------------------|-------------|---------|
+| `DB_HOST` | PostgreSQL host | `postgres.default.svc.cluster.local` |
+| `DB_PORT` | PostgreSQL port | `5432` |
+| `DB_NAME` | Database name | `idgenerator` |
+| `DB_USER` | Database user (with CREATE TABLE privileges) | `idgen_admin` |
+| `DB_PASSWORD` | Database password | `(secret)` |
+
+The async connection string is constructed as:
+```
+postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}
+```
+
+**Requirements on the PostgreSQL user:**
+- Must have `CREATE TABLE`, `CREATE INDEX`, `INSERT`, `SELECT`, `UPDATE` privileges on the target database.
+- The database itself (`DB_NAME`) must already exist. The service does **not** create the database — only the tables within it.
+
+### 3.4 Table Lifecycle
+
+- **On startup**: For each namespace in config, run `CREATE TABLE IF NOT EXISTS` and `CREATE INDEX IF NOT EXISTS`. Existing tables are untouched. All previously generated and issued IDs are preserved.
 - **On namespace removal**: Table is left in place (orphaned but safe). Manual `DROP TABLE` by DBA if cleanup is needed.
 - **Namespace naming**: Validated against config (alphanumeric + underscore only) to prevent SQL injection in table names.
 
-### 3.4 Schema Migrations
+### 3.5 Schema Migrations
 
 - **Alembic** manages the schema structure (what columns the tables have).
 - **Table creation per namespace** is handled at app startup, not via Alembic migrations.
@@ -225,7 +259,55 @@ IDs are generated and inserted in smaller sub-batches (e.g., 10K per transaction
 
 ---
 
-## 8. Startup Behavior
+## 8. Version Endpoint & Build Metadata
+
+### 8.1 Version API — `GET /v1/idgenerator/version`
+
+Returns the service version and build metadata. Used by test frameworks, monitoring dashboards, and operators to identify which version is deployed.
+
+```json
+{
+  "id": "mosip.idgenerator",
+  "version": "1.0",
+  "responsetime": "2026-03-28T10:00:00.000Z",
+  "response": {
+    "service_version": "0.1.0",
+    "build_time": "2026-03-28T08:30:00.000Z",
+    "git_commit": "a1b2c3d"
+  },
+  "errors": []
+}
+```
+
+### 8.2 How Version Info is Populated
+
+| Field | Source | Mechanism |
+|-------|--------|-----------|
+| `service_version` | `pyproject.toml` → `[project] version` | Read at runtime via `importlib.metadata.version("id-generator")` |
+| `build_time` | Docker build | Injected as build arg → environment variable `BUILD_TIME` |
+| `git_commit` | Docker build | Injected as build arg → environment variable `GIT_COMMIT` |
+
+**Dockerfile snippet:**
+```dockerfile
+ARG BUILD_TIME
+ARG GIT_COMMIT
+ENV BUILD_TIME=${BUILD_TIME}
+ENV GIT_COMMIT=${GIT_COMMIT}
+```
+
+**CI/CD build command:**
+```bash
+docker build \
+  --build-arg BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%S.000Z") \
+  --build-arg GIT_COMMIT=$(git rev-parse --short HEAD) \
+  -t id-generator:latest .
+```
+
+For local development (no Docker), `build_time` and `git_commit` default to `"dev"`.
+
+---
+
+## 9. Startup Behavior
 
 On application startup:
 
@@ -249,7 +331,7 @@ Kubernetes implications:
 
 ---
 
-## 9. Configuration Management
+## 10. Configuration Management
 
 ### 9.1 Configuration File
 
@@ -295,7 +377,7 @@ Environment variables take precedence over YAML values, enabling per-deployment 
 
 ---
 
-## 10. Kubernetes Deployment Architecture
+## 11. Kubernetes Deployment Architecture
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -317,18 +399,18 @@ Environment variables take precedence over YAML values, enabling per-deployment 
 └─────────────────────────────────────────────────────┘
 ```
 
-### 10.1 Pod Design
+### 11.1 Pod Design
 
 - **Every pod is identical** — runs both the FastAPI server and the background pool manager.
 - **No leader pod** — PostgreSQL advisory locks coordinate generation naturally.
 - **Horizontal scaling**: Add pods for more API throughput.
 
-### 10.2 Connection Pooling
+### 11.2 Connection Pooling
 
 - SQLAlchemy async connection pool per pod (e.g., 10 connections per pod).
 - For many pods (10+), consider deploying **PgBouncer** in front of PostgreSQL to avoid exceeding PostgreSQL's `max_connections`.
 
-### 10.3 Probes
+### 11.3 Probes
 
 | Probe | Endpoint / Check | Purpose |
 |-------|------------------|---------|
@@ -337,7 +419,7 @@ Environment variables take precedence over YAML values, enabling per-deployment 
 
 ---
 
-## 11. Key Architectural Decisions Summary
+## 12. Key Architectural Decisions Summary
 
 | # | Decision | Choice | Rationale |
 |---|----------|--------|-----------|
@@ -351,3 +433,4 @@ Environment variables take precedence over YAML values, enabling per-deployment 
 | 8 | Startup behavior | Block until minimum pool is generated | No IDG-001 errors immediately after deployment |
 | 9 | Health / readiness | DB ping only; readiness tied to startup completion | Simple, sufficient |
 | 10 | Config management | Pydantic Settings: YAML + env var overrides | Flexible for K8s (ConfigMap + env vars) |
+| 11 | Version endpoint | `GET /v1/idgenerator/version` with semver + build metadata | Enables test reports, monitoring, and deployment verification |

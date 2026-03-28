@@ -161,7 +161,8 @@ Following MOSIP's response wrapper style, adapted with namespace support.
 |--------|------|-------------|
 | `GET` | `/v1/idgenerator/{namespace}/id` | Issue one ID from the namespace pool |
 | `GET` | `/v1/idgenerator/{namespace}/id/validate/{id}` | Validate an ID's structure (checksum + filter rules) |
-| `GET` | `/v1/idgenerator/health` | Health check (DB connectivity, pool status) |
+| `GET` | `/v1/idgenerator/health` | Health check (DB connectivity) |
+| `GET` | `/v1/idgenerator/version` | Returns service version, build info |
 
 #### Issue ID — `GET /v1/idgenerator/{namespace}/id`
 
@@ -206,7 +207,30 @@ It does **not** check whether the ID exists in the database or whether it is AVA
 
 #### Health Check — `GET /v1/idgenerator/health`
 
-Returns service health including database connectivity and pool status.
+Returns service health (DB connectivity ping). Used as Kubernetes readiness probe.
+
+#### Version — `GET /v1/idgenerator/version`
+
+Returns the service version and build metadata. Used by test frameworks and monitoring to identify which version is deployed.
+
+**Response**:
+```json
+{
+  "id": "mosip.idgenerator",
+  "version": "1.0",
+  "responsetime": "2026-03-28T10:00:00.000Z",
+  "response": {
+    "service_version": "0.1.0",
+    "build_time": "2026-03-28T08:30:00.000Z",
+    "git_commit": "a1b2c3d"
+  },
+  "errors": []
+}
+```
+
+- `service_version`: Semantic version from `pyproject.toml`.
+- `build_time`: Timestamp when the Docker image was built (injected at build time).
+- `git_commit`: Short git commit hash (injected at build time).
 
 ### 8.3 Error Codes
 
