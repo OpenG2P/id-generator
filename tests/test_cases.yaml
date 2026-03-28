@@ -1,0 +1,456 @@
+# ID Generator Service — Test Cases
+#
+# Human-reviewable catalog of all 49 test cases.
+# This file is documentation only — not consumed by pytest directly.
+#
+# Run all: pytest --base-url=http://localhost:8000
+# Run by category: pytest -m exhaustive
+# Run by name: pytest -k "test_all_ids_unique_ns1"
+
+# =========================================================================
+# Category 1: Exhaustive Uniqueness & Randomness (8 tests)
+# File: test_exhaustive.py
+# Phase: 3 (runs after API contract and filter tests)
+# =========================================================================
+
+- id: EXH-001
+  name: test_all_ids_unique_ns1
+  category: exhaustive
+  markers: [exhaustive, slow]
+  file: test_exhaustive.py
+  description: >
+    POST Issue IDs from test_ns_1 one at a time until space is exhausted
+    (HTTP 410 / IDG-002). Collect all IDs. Assert no duplicates.
+
+- id: EXH-002
+  name: test_all_ids_unique_ns2
+  category: exhaustive
+  markers: [exhaustive, slow]
+  file: test_exhaustive.py
+  description: >
+    Same as EXH-001 for test_ns_2. Verifies namespace isolation.
+
+- id: EXH-003
+  name: test_ids_not_sequential_ns1
+  category: exhaustive
+  markers: [exhaustive]
+  file: test_exhaustive.py
+  description: >
+    Assert issued IDs are NOT in ascending or descending numeric order.
+
+- id: EXH-004
+  name: test_ids_not_sequential_ns2
+  category: exhaustive
+  markers: [exhaustive]
+  file: test_exhaustive.py
+  description: >
+    Same as EXH-003 for test_ns_2.
+
+- id: EXH-005
+  name: test_ids_not_clustered
+  category: exhaustive
+  markers: [exhaustive]
+  file: test_exhaustive.py
+  description: >
+    Compute deltas between consecutive IDs. Assert high standard deviation
+    (not constant or near-constant spacing).
+
+- id: EXH-006
+  name: test_digit_distribution
+  category: exhaustive
+  markers: [exhaustive]
+  file: test_exhaustive.py
+  description: >
+    For each digit position, verify frequency distribution is reasonable
+    using chi-squared goodness-of-fit test.
+
+- id: EXH-007
+  name: test_namespace_independence
+  category: exhaustive
+  markers: [exhaustive]
+  file: test_exhaustive.py
+  description: >
+    Compare issuance order between test_ns_1 and test_ns_2. Assert the
+    orderings are different (independently randomized).
+
+- id: EXH-008
+  name: test_total_count_within_expected_range
+  category: exhaustive
+  markers: [exhaustive]
+  file: test_exhaustive.py
+  description: >
+    Assert total number of valid 5-digit IDs falls within mathematically
+    expected bounds [500, 8000].
+
+# =========================================================================
+# Category 2: Filter Validation (18 tests)
+# File: test_filters.py
+# Phase: 2 (uses Validate API, no pool consumption except FLT-015)
+# =========================================================================
+
+- id: FLT-001
+  name: test_valid_id_passes_validation
+  category: filters
+  markers: [filters]
+  file: test_filters.py
+  description: >
+    Construct a known-valid ID. Submit to Validate API. Assert valid=true.
+
+- id: FLT-002
+  name: test_wrong_checksum_rejected
+  category: filters
+  markers: [filters]
+  file: test_filters.py
+  description: >
+    Take a valid ID, alter the checksum digit. Assert valid=false.
+
+- id: FLT-003
+  name: test_starts_with_zero_rejected
+  category: filters
+  markers: [filters]
+  file: test_filters.py
+  description: >
+    Construct an ID starting with '0'. Assert valid=false.
+
+- id: FLT-004
+  name: test_starts_with_one_rejected
+  category: filters
+  markers: [filters]
+  file: test_filters.py
+  description: >
+    Construct an ID starting with '1'. Assert valid=false.
+
+- id: FLT-005
+  name: test_ascending_sequence_rejected
+  category: filters
+  markers: [filters]
+  file: test_filters.py
+  description: >
+    Construct an ID with ascending sequence >= limit (e.g., "234").
+    Assert valid=false.
+
+- id: FLT-006
+  name: test_descending_sequence_rejected
+  category: filters
+  markers: [filters]
+  file: test_filters.py
+  description: >
+    Construct an ID with descending sequence >= limit (e.g., "987").
+    Assert valid=false.
+
+- id: FLT-007
+  name: test_repeating_digit_rejected
+  category: filters
+  markers: [filters]
+  file: test_filters.py
+  description: >
+    Construct an ID with same digit repeating within limit distance.
+    Assert valid=false.
+
+- id: FLT-008
+  name: test_repeating_block_rejected
+  category: filters
+  markers: [filters]
+  file: test_filters.py
+  description: >
+    Construct an ID with a repeated digit block. Assert valid=false.
+
+- id: FLT-009
+  name: test_conjugative_even_digits_rejected
+  category: filters
+  markers: [filters]
+  file: test_filters.py
+  description: >
+    Construct an ID with N+ consecutive even digits. Assert valid=false.
+
+- id: FLT-010
+  name: test_first_equals_last_rejected
+  category: filters
+  markers: [filters]
+  file: test_filters.py
+  description: >
+    Construct a 10-digit ID where first 5 digits == last 5 digits.
+    Validate against perf namespace. Assert valid=false.
+
+- id: FLT-011
+  name: test_first_equals_reverse_last_rejected
+  category: filters
+  markers: [filters]
+  file: test_filters.py
+  description: >
+    Construct a 10-digit ID where first 5 == reverse(last 5).
+    Validate against perf namespace. Assert valid=false.
+
+- id: FLT-012
+  name: test_restricted_number_rejected
+  category: filters
+  markers: [filters]
+  file: test_filters.py
+  description: >
+    Construct an ID containing a restricted number. Assert valid=false.
+    SKIPPED if no restricted numbers are configured.
+
+- id: FLT-013
+  name: test_cyclic_number_rejected
+  category: filters
+  markers: [filters]
+  file: test_filters.py
+  description: >
+    Construct a 10-digit ID containing "142857". Validate against perf
+    namespace. Assert valid=false.
+
+- id: FLT-014
+  name: test_wrong_length_rejected
+  category: filters
+  markers: [filters]
+  file: test_filters.py
+  description: >
+    Submit 4-digit and 6-digit IDs to a 5-digit namespace.
+    Assert valid=false for both.
+
+- id: FLT-015
+  name: test_all_exhaustive_ids_pass_validation
+  category: filters
+  markers: [filters, slow]
+  file: test_filters.py
+  description: >
+    Submit every ID from EXH-001 to the Validate API.
+    Assert all return valid=true. Cross-checks generator vs validator.
+
+- id: FLT-016
+  name: test_boundary_sequence_allowed
+  category: filters
+  markers: [filters]
+  file: test_filters.py
+  description: >
+    Construct an ID with a sequence exactly below the limit (e.g., "12"
+    with limit=3). Assert valid=true (or at least not rejected by
+    sequence filter).
+
+- id: FLT-017
+  name: test_boundary_repeating_allowed
+  category: filters
+  markers: [filters]
+  file: test_filters.py
+  description: >
+    Construct an ID where same digit appears beyond limit distance.
+    Assert valid=true (or at least not rejected by repeating filter).
+
+- id: FLT-018
+  name: test_non_numeric_rejected
+  category: filters
+  markers: [filters]
+  file: test_filters.py
+  description: >
+    Submit IDs with alphabetic/special characters. Assert valid=false
+    or HTTP 422.
+
+# =========================================================================
+# Category 3: Space Exhaustion (4 tests)
+# File: test_exhaustion.py
+# Phase: 4 (runs after exhaustive tests drain the namespaces)
+# =========================================================================
+
+- id: EXS-001
+  name: test_exhaustion_returns_error
+  category: exhaustion
+  markers: [exhaustion]
+  file: test_exhaustion.py
+  description: >
+    After all IDs consumed, POST returns HTTP 410 with IDG-002.
+
+- id: EXS-002
+  name: test_exhaustion_error_is_permanent
+  category: exhaustion
+  markers: [exhaustion]
+  file: test_exhaustion.py
+  description: >
+    Subsequent requests still return HTTP 410 / IDG-002 (not transient).
+
+- id: EXS-003
+  name: test_other_namespace_unaffected
+  category: exhaustion
+  markers: [exhaustion]
+  file: test_exhaustion.py
+  description: >
+    Exhaustion in test_ns_1 does not affect perf namespace. POST to
+    perf namespace returns HTTP 200.
+
+- id: EXS-004
+  name: test_exhaustion_response_format
+  category: exhaustion
+  markers: [exhaustion]
+  file: test_exhaustion.py
+  description: >
+    Exhaustion error matches MOSIP envelope: HTTP 410, application/json,
+    response=null, errors array with errorCode and message.
+
+# =========================================================================
+# Category 4: Response Time (4 tests)
+# File: test_performance.py
+# Phase: 5 (independent, uses perf namespace)
+# =========================================================================
+
+- id: PRF-001
+  name: test_issue_id_response_time
+  category: performance
+  markers: [performance]
+  file: test_performance.py
+  description: >
+    Issue 100 IDs sequentially. Assert p50<100ms, p95<500ms, p99<1000ms.
+
+- id: PRF-002
+  name: test_issue_id_concurrent_response_time
+  category: performance
+  markers: [performance]
+  file: test_performance.py
+  description: >
+    Issue 50 IDs concurrently (asyncio.gather). Assert total time < 5s.
+
+- id: PRF-003
+  name: test_validate_id_response_time
+  category: performance
+  markers: [performance]
+  file: test_performance.py
+  description: >
+    Validate one ID 100 times. Assert p50<50ms, p95<200ms.
+
+- id: PRF-004
+  name: test_health_endpoint_response_time
+  category: performance
+  markers: [performance]
+  file: test_performance.py
+  description: >
+    Call health endpoint 50 times. Assert p95<200ms.
+
+# =========================================================================
+# Category 5: API Contract (15 tests)
+# File: test_api_contract.py
+# Phase: 1 (runs first to verify service is up)
+# =========================================================================
+
+- id: API-001
+  name: test_issue_response_envelope
+  category: api_contract
+  markers: [api_contract]
+  file: test_api_contract.py
+  description: >
+    POST Issue ID returns HTTP 200, Content-Type application/json,
+    MOSIP envelope with id, version, responsetime, response.id, errors=[].
+
+- id: API-002
+  name: test_validate_response_envelope
+  category: api_contract
+  markers: [api_contract]
+  file: test_api_contract.py
+  description: >
+    GET Validate returns HTTP 200, MOSIP envelope with response.id
+    and response.valid (boolean).
+
+- id: API-003
+  name: test_unknown_namespace_returns_404
+  category: api_contract
+  markers: [api_contract]
+  file: test_api_contract.py
+  description: >
+    POST Issue ID with unknown namespace returns HTTP 404, IDG-003.
+
+- id: API-004
+  name: test_validate_unknown_namespace_returns_404
+  category: api_contract
+  markers: [api_contract]
+  file: test_api_contract.py
+  description: >
+    GET Validate with unknown namespace returns HTTP 404, IDG-003.
+
+- id: API-005
+  name: test_health_endpoint_returns_healthy
+  category: api_contract
+  markers: [api_contract]
+  file: test_api_contract.py
+  description: >
+    GET Health returns HTTP 200.
+
+- id: API-006
+  name: test_issued_id_is_numeric
+  category: api_contract
+  markers: [api_contract]
+  file: test_api_contract.py
+  description: >
+    Issued ID contains only digits (regex ^\d+$).
+
+- id: API-007
+  name: test_issued_id_correct_length
+  category: api_contract
+  markers: [api_contract]
+  file: test_api_contract.py
+  description: >
+    Issued ID length matches namespace config (5 for test_ns_1).
+
+- id: API-008
+  name: test_issued_id_passes_validation
+  category: api_contract
+  markers: [api_contract]
+  file: test_api_contract.py
+  description: >
+    Issue an ID, then validate it. Assert valid=true.
+
+- id: API-009
+  name: test_version_endpoint
+  category: api_contract
+  markers: [api_contract]
+  file: test_api_contract.py
+  description: >
+    GET Version returns HTTP 200 with service_version (semver),
+    build_time, git_commit.
+
+- id: API-010
+  name: test_version_response_envelope
+  category: api_contract
+  markers: [api_contract]
+  file: test_api_contract.py
+  description: >
+    Version response follows MOSIP envelope: id, version, responsetime,
+    response, errors=[].
+
+- id: API-011
+  name: test_issue_id_get_not_allowed
+  category: api_contract
+  markers: [api_contract]
+  file: test_api_contract.py
+  description: >
+    GET (not POST) to Issue ID endpoint returns HTTP 405.
+
+- id: API-012
+  name: test_invalid_namespace_format_returns_422
+  category: api_contract
+  markers: [api_contract]
+  file: test_api_contract.py
+  description: >
+    POST with invalid namespace format (digits-first, uppercase, spaces)
+    returns HTTP 422.
+
+- id: API-013
+  name: test_invalid_id_format_returns_422
+  category: api_contract
+  markers: [api_contract]
+  file: test_api_contract.py
+  description: >
+    GET Validate with non-numeric ID (alphabetic, decimal, spaces)
+    returns HTTP 422.
+
+- id: API-014
+  name: test_openapi_spec_available
+  category: api_contract
+  markers: [api_contract]
+  file: test_api_contract.py
+  description: >
+    GET /openapi.json returns HTTP 200 with valid OpenAPI 3.x spec.
+
+- id: API-015
+  name: test_content_type_json
+  category: api_contract
+  markers: [api_contract]
+  file: test_api_contract.py
+  description: >
+    All endpoints return Content-Type application/json header.
