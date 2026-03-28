@@ -162,6 +162,13 @@ Both statements execute in a single transaction.
 - Result: **zero contention** between pods — every pod gets an instant response regardless of concurrent load.
 - This is the standard PostgreSQL pattern for job queues and pool dispensers.
 
+### 4.3 Deadlock Retry
+
+In rare cases under heavy concurrent load, deadlocks can occur between the issuing
+transaction and the pool replenishment insertion. The issuer includes retry logic:
+- Up to **3 retries** with **100ms delay** between attempts.
+- Only transient database errors are retried; `PoolEmptyError` propagates immediately.
+
 ---
 
 ## 5. Pool Replenishment
@@ -176,7 +183,7 @@ For each namespace in config:
     2. If count < pool_min_threshold:
          Try: pg_try_advisory_lock(hash(namespace))
          If lock acquired:
-             Generate IDs in sub-batches (e.g., 10K per transaction)
+             Generate IDs in sub-batches (e.g., 100 rows per transaction)
              Insert into id_pool_{namespace}
              Release advisory lock
          If lock NOT acquired:
@@ -199,7 +206,7 @@ For each namespace in config:
 
 ### 5.4 Sub-Batch Insertion
 
-IDs are generated and inserted in smaller sub-batches (e.g., 10K per transaction) rather than one large batch:
+IDs are generated and inserted in smaller sub-batches (e.g., 100 rows per transaction) rather than one large batch:
 - Avoids long-running transactions that hold locks.
 - Reduces WAL pressure.
 - Allows other operations (like issuing) to interleave without being blocked.
@@ -427,7 +434,7 @@ Environment variables take precedence over YAML values, enabling per-deployment 
 | 2 | Table strategy | Table-per-namespace, auto-created on startup | Clean isolation, better vacuum/maintenance, instant DROP |
 | 3 | Issuing concurrency | `SELECT ... FOR UPDATE SKIP LOCKED` | Zero contention between pods |
 | 4 | Generation coordination | PostgreSQL advisory locks (`pg_try_advisory_lock`) | No external coordinator needed, per-namespace parallelism |
-| 5 | Bulk insert | Sub-batches (e.g., 10K per transaction) | Avoids long transactions, reduces WAL pressure |
+| 5 | Bulk insert | Sub-batches (e.g., 100 rows per transaction) | Avoids long transactions, reduces WAL pressure |
 | 6 | Duplicate handling | `INSERT ... ON CONFLICT DO NOTHING` | Silently skips, no error handling needed |
 | 7 | Filter execution | In-memory, ordered cheapest-first, before DB insert | Fail fast, no wasted DB writes |
 | 8 | Startup behavior | Block until minimum pool is generated | No IDG-001 errors immediately after deployment |

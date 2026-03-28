@@ -22,8 +22,9 @@ No unit tests or mocking — we test the real service end-to-end through its HTT
 | HTTP Client | `httpx` (async) | BSD-3-Clause | Async HTTP calls; matches the async service |
 | Async support | `pytest-asyncio` | Apache 2.0 | Run async test functions in pytest |
 | Reporting | `pytest-html` + custom plugin | MPL 2.0 | HTML test report with version, timestamp, summary |
-| Timing | `pytest-benchmark` | Apache 2.0 | Response time measurements |
-| Config | CLI options + env vars | — | `--base-url`, `--namespace`, etc. |
+| Test ordering | `pytest-ordering` | MIT | Control test execution order across phases |
+| Report metadata | `pytest-metadata` | MPL 2.0 | Bundled with pytest-html; populates Environment table |
+| Config | CLI options + env vars | — | `--base-url` CLI option or `IDGEN_BASE_URL` env var |
 
 All components use **permissive open-source licenses**. No copyleft (GPL) dependencies.
 
@@ -169,9 +170,9 @@ These tests issue **every possible ID** from a small-space namespace (length=5) 
 | 1.3 | `EXH-003` | `test_ids_not_sequential_ns1` | Using the list from EXH-001: assert that IDs are NOT in ascending or descending numeric order. Compare the issued order with sorted order — they must differ. | `exhaustive` |
 | 1.4 | `EXH-004` | `test_ids_not_sequential_ns2` | Same as EXH-003 for `test_ns_2`. | `exhaustive` |
 | 1.5 | `EXH-005` | `test_ids_not_clustered` | Using the list from EXH-001: convert IDs to integers, compute first-order differences (delta between consecutive IDs). Assert that deltas are not constant or near-constant (std deviation of deltas > threshold). | `exhaustive` |
-| 1.6 | `EXH-006` | `test_digit_distribution` | Across all issued IDs from EXH-001: for each digit position, count frequency of each digit (0-9). Apply chi-squared goodness-of-fit test. No single digit should dominate any position beyond statistical expectation. Note: position 0 will have non-uniform distribution (only 2-9) — adjust expected frequencies accordingly. | `exhaustive` |
+| 1.6 | `EXH-006` | `test_digit_distribution` | Across all issued IDs from EXH-001: for each middle digit position (excluding position 0 and the checksum digit), count frequency of each digit (0-9). Assert no single digit accounts for >50% of occurrences at any position. This catches gross generation bugs while tolerating the inherent bias from filter rules (no repeating digits, no sequences, no consecutive even digits). | `exhaustive` |
 | 1.7 | `EXH-007` | `test_namespace_independence` | Compare IDs issued to `test_ns_1` and `test_ns_2`. Assert: the **order** of issuance differs (since each namespace generates independently). The sets of IDs may overlap (same valid ID can exist in both namespaces), but the issuance order must be different. | `exhaustive` |
-| 1.8 | `EXH-008` | `test_total_count_within_expected_range` | Assert that the total number of IDs issued before exhaustion falls within the expected range. For 5-digit IDs with standard filters, estimate the valid space mathematically and assert: `expected_min <= count <= expected_max`. | `exhaustive` |
+| 1.8 | `EXH-008` | `test_total_count_within_expected_range` | Assert that the total number of IDs issued before exhaustion falls within a dynamically computed expected range based on `id_length`. Raw space = `8 * 10^(id_length - 2)`. Expected range: `[5% of raw_space, raw_space]`. Filters typically reduce the raw space to 15-60% depending on ID length and filter parameters. | `exhaustive` |
 
 ### Category 2: Filter Validation (`test_filters.py`)
 
@@ -353,39 +354,57 @@ Phase 5: Performance tests (performance)
     → Independent of other phases
 ```
 
-We use `pytest-ordering` or explicit fixture dependencies to enforce this sequence.
+We use `pytest-ordering` with `@pytest.mark.order()` to enforce this sequence.
+
+### Async Event Loop
+
+All tests and session-scoped async fixtures (HTTP client, service config) share
+a **single session-scoped event loop** via:
+- `asyncio_default_fixture_loop_scope = session` in `pytest.ini`
+- `@pytest_asyncio.fixture(scope="session", loop_scope="session")` on async fixtures
+- `@pytest.mark.asyncio(loop_scope="session")` on all test modules
+
+This prevents "event loop is closed" and "bound to a different event loop" errors
+that occur when session-scoped async resources (like `httpx.AsyncClient`) are
+accessed from function-scoped event loops.
 
 ---
 
 ## 9. Running Tests
 
-### 9.1 Full Suite
+All tests must be run from the `tests/` directory.
+
+### 9.1 Fast Tests (~2 seconds)
 
 ```bash
-# All tests against local service
-pytest --base-url=http://localhost:8000 --html=report.html -v
+cd tests
+
+# API contract + filters + performance (non-destructive, can run repeatedly)
+pytest -m "api_contract or filters or performance" --base-url=http://localhost:8000 -v
+```
+
+### 9.2 Full Suite (all phases in order)
+
+```bash
+# All tests against local service with HTML report
+pytest --base-url=http://localhost:8000 --html=report.html --self-contained-html -v
 
 # All tests against remote service
-pytest --base-url=https://idgen.staging.example.com --html=report.html -v
+pytest --base-url=https://idgen.staging.example.com --html=report.html --self-contained-html -v
 ```
 
-### 9.2 By Category
+### 9.3 By Category
 
 ```bash
-# Only exhaustive tests
-pytest -m exhaustive --base-url=http://localhost:8000
-
-# Only filter tests (fast, no pool consumption)
-pytest -m filters --base-url=http://localhost:8000
-
-# Only performance tests
-pytest -m performance --base-url=http://localhost:8000
-
-# Exclude slow tests
-pytest -m "not slow" --base-url=http://localhost:8000
+pytest -m api_contract --base-url=http://localhost:8000 -v     # API format & errors
+pytest -m filters --base-url=http://localhost:8000 -v          # Filter validation
+pytest -m exhaustive --base-url=http://localhost:8000 -v       # Drain all IDs (slow)
+pytest -m exhaustion --base-url=http://localhost:8000 -v       # Post-exhaustion checks
+pytest -m performance --base-url=http://localhost:8000 -v      # Response time benchmarks
+pytest -m "not slow" --base-url=http://localhost:8000 -v       # Exclude slow tests
 ```
 
-### 9.3 Individual Tests
+### 9.4 Individual Tests
 
 ```bash
 # Single test by name
@@ -395,7 +414,7 @@ pytest -k "test_all_ids_unique_ns1" --base-url=http://localhost:8000
 pytest test_filters.py --base-url=http://localhost:8000
 ```
 
-### 9.4 With Verbose Timing
+### 9.5 With Verbose Timing
 
 ```bash
 pytest -m performance --base-url=http://localhost:8000 -v --tb=short --durations=10
@@ -405,15 +424,24 @@ pytest -m performance --base-url=http://localhost:8000 -v --tb=short --durations
 
 ## 10. Test Namespaces Required
 
-The target service must have these namespaces configured:
+Tests **auto-discover** namespaces from the service via `GET /v1/idgenerator/config`.
+No namespace names are hardcoded in tests. The service must have at least:
 
-| Namespace | ID Length | Purpose |
-|-----------|-----------|---------|
-| `test_ns_1` | 5 | Exhaustive uniqueness test (namespace 1) |
-| `test_ns_2` | 5 | Exhaustive uniqueness test (namespace 2) |
-| `test_perf_ns` | 10 | Performance tests (large pool, not exhausted) |
+- **2 namespaces with small `id_length`** (e.g., 5) — used for exhaustive tests
+- **1 namespace with large `id_length`** (e.g., 10+) — used for performance tests
 
-**Warning**: Running the exhaustive tests will permanently consume ALL IDs in `test_ns_1` and `test_ns_2`. These namespaces must be reset (drop and recreate tables) before re-running.
+**Warning**: Running the exhaustive tests will permanently consume ALL IDs in the
+two smallest-length namespaces. These namespaces must be reset (drop tables and
+restart the service) before re-running.
+
+### Conditionally Skipped Tests
+
+| Test | Skip condition | How to enable |
+|------|----------------|---------------|
+| FLT-010 (first=last) | `id_length < 2 * digits_group_limit + 1` | Use namespace with `id_length >= 11` (for default limit=5) |
+| FLT-011 (first=reverse last) | `id_length < 2 * reverse_digits_group_limit + 1` | Same as above |
+| FLT-012 (restricted numbers) | `restricted_numbers` is empty | Add entries to `restricted_numbers` in config |
+| FLT-015 (cross-validate) | Exhaustive tests haven't run | Run as part of the full suite, not in isolation |
 
 ---
 

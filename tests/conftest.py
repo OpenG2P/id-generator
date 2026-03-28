@@ -9,6 +9,7 @@ import os
 
 import httpx
 import pytest
+import pytest_asyncio
 
 
 # ---------------------------------------------------------------------------
@@ -39,7 +40,7 @@ def base_url(request):
     return url.rstrip("/")
 
 
-@pytest.fixture(scope="session")
+@pytest_asyncio.fixture(scope="session", loop_scope="session")
 async def client(base_url):
     """Async HTTP client for the test session."""
     async with httpx.AsyncClient(
@@ -49,7 +50,7 @@ async def client(base_url):
         yield c
 
 
-@pytest.fixture(scope="session")
+@pytest_asyncio.fixture(scope="session", loop_scope="session")
 async def service_config(client):
     """Fetch and cache the service configuration (namespaces, filter rules).
 
@@ -127,7 +128,7 @@ def perf_id_length(namespaces, perf_namespace):
     return namespaces[perf_namespace]["id_length"]
 
 
-@pytest.fixture(scope="session")
+@pytest_asyncio.fixture(scope="session", loop_scope="session")
 async def service_version(client):
     """
     Fetch and cache service version info at session start.

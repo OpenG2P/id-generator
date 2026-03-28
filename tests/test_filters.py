@@ -13,7 +13,11 @@ from helpers import (
     construct_valid_id,
 )
 
-pytestmark = [pytest.mark.filters, pytest.mark.order(2)]
+pytestmark = [
+    pytest.mark.filters,
+    pytest.mark.order(2),
+    pytest.mark.asyncio(loop_scope="session"),
+]
 
 
 # -------------------------------------------------------------------------
@@ -184,8 +188,15 @@ class TestFLT010:
     requires ID length >= 10."""
 
     async def test_first_equals_last_rejected(
-        self, client, perf_namespace, perf_id_length, validate_id
+        self, client, perf_namespace, perf_id_length, service_config, validate_id
     ):
+        limit = service_config["filter_rules"]["digits_group_limit"]
+        if perf_id_length < 2 * limit + 1:
+            pytest.skip(
+                f"ID length {perf_id_length} too short for "
+                f"first_equals_last with limit {limit} "
+                f"(need >= {2 * limit + 1})"
+            )
         bad_id = construct_id_failing_filter("first_equals_last", perf_id_length)
         resp = await validate_id(client, perf_namespace, bad_id)
         assert resp.status_code == 200
@@ -202,8 +213,15 @@ class TestFLT011:
     Uses perf namespace (length=10)."""
 
     async def test_first_equals_reverse_last_rejected(
-        self, client, perf_namespace, perf_id_length, validate_id
+        self, client, perf_namespace, perf_id_length, service_config, validate_id
     ):
+        limit = service_config["filter_rules"]["reverse_digits_group_limit"]
+        if perf_id_length < 2 * limit + 1:
+            pytest.skip(
+                f"ID length {perf_id_length} too short for "
+                f"first_equals_reverse_last with limit {limit} "
+                f"(need >= {2 * limit + 1})"
+            )
         bad_id = construct_id_failing_filter(
             "first_equals_reverse_last", perf_id_length
         )

@@ -3,7 +3,7 @@
 # N = number of digits in the ID
 import random
 
-N = 5
+N = 6
 def estimate_uins(sample_size=1000000):
     # Define digits and even digits
     digits = list(range(N))

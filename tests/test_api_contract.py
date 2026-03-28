@@ -11,7 +11,11 @@ import re
 import pytest
 
 
-pytestmark = [pytest.mark.api_contract, pytest.mark.order(1)]
+pytestmark = [
+    pytest.mark.api_contract,
+    pytest.mark.order(1),
+    pytest.mark.asyncio(loop_scope="session"),
+]
 
 
 # -------------------------------------------------------------------------

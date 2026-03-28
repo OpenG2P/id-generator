@@ -376,12 +376,12 @@ def construct_id_failing_filter(
         return build_valid_id(base)
 
     if filter_name == "first_equals_last":
-        # First N digits == last N digits (requires length >= 2*limit)
+        # First N digits == last N digits (requires length >= 2*limit + 1)
         limit = cfg["digits_group_limit"]
         if length < 2 * limit + 1:  # +1 for checksum
             raise ValueError(
                 f"ID length {length} too short for first_equals_last "
-                f"with limit {limit}"
+                f"with limit {limit} (need >= {2 * limit + 1})"
             )
         # Build: [block][filler][block] + checksum
         block = "23456"[:limit]
@@ -397,7 +397,8 @@ def construct_id_failing_filter(
         if length < 2 * limit + 1:
             raise ValueError(
                 f"ID length {length} too short for "
-                f"first_equals_reverse_last with limit {limit}"
+                f"first_equals_reverse_last with limit {limit} "
+                f"(need >= {2 * limit + 1})"
             )
         block = "23456"[:limit]
         reverse_block = block[::-1]

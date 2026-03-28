@@ -182,24 +182,50 @@ With the service running locally:
 ```bash
 cd tests
 
-# Run all tests
+# Fast tests — API contract + filters + performance (~2 seconds)
+pytest -m "api_contract or filters or performance" --base-url=http://localhost:8000 -v
+
+# Run all tests in order (api_contract -> filters -> exhaustive -> exhaustion -> performance)
+pytest --base-url=http://localhost:8000 -v
+
+# With HTML report (includes service version, git commit, target URL)
 pytest --base-url=http://localhost:8000 --html=report.html --self-contained-html -v
 
 # Run against a remote service
 pytest --base-url=https://idgen.staging.example.com -v
 
-# Run only API contract tests (fast)
-pytest -m api_contract --base-url=http://localhost:8000 -v
-
-# Run only filter tests (fast, no IDs consumed)
-pytest -m filters --base-url=http://localhost:8000 -v
-
-# Run exhaustive tests (slow, consumes all IDs in small namespaces)
-pytest -m exhaustive --base-url=http://localhost:8000 -v
+# Run individual categories
+pytest -m api_contract --base-url=http://localhost:8000 -v    # API format & errors
+pytest -m filters --base-url=http://localhost:8000 -v         # Filter validation (no IDs consumed)
+pytest -m performance --base-url=http://localhost:8000 -v     # Response time benchmarks
+pytest -m exhaustive --base-url=http://localhost:8000 -v      # Drain all IDs (slow, destructive)
+pytest -m exhaustion --base-url=http://localhost:8000 -v      # Post-exhaustion checks (run after exhaustive)
 ```
 
-**Important**: After running exhaustive tests, the two smallest-ID-length
-namespaces are fully consumed. To re-run them, drop their tables and restart:
+### Test categories and ordering
+
+| Phase | Category | Marker | Description |
+|-------|----------|--------|-------------|
+| 1 | API Contract | `api_contract` | Response envelope, HTTP status codes, error codes, OpenAPI |
+| 2 | Filters | `filters` | Validate API correctly accepts/rejects IDs per filter rules |
+| 3 | Exhaustive | `exhaustive` | Drain all IDs from small namespaces, verify uniqueness & randomness |
+| 4 | Exhaustion | `exhaustion` | Verify correct IDG-002 errors after space is fully consumed |
+| 5 | Performance | `performance` | Response time percentiles (p50, p95, p99) |
+
+### Notes on skipped tests
+
+- **FLT-010/FLT-011** (first-equals-last, first-equals-reverse-last): Skipped when
+  the largest namespace's `id_length` is less than `2 * digits_group_limit + 1`.
+  With default `digits_group_limit=5`, this requires `id_length >= 11`. Configure
+  a namespace with `id_length: 12` to enable these tests.
+- **FLT-012** (restricted numbers): Skipped when `restricted_numbers` is empty in config.
+- **FLT-015** (cross-validate exhaustive IDs): Only meaningful when run after
+  exhaustive tests (Phase 3). Skips with a message if no IDs were collected.
+
+### Resetting after exhaustive tests
+
+After running exhaustive tests, the two smallest-ID-length namespaces are fully
+consumed. To re-run them, drop their tables and restart:
 
 ```bash
 # Connect to PostgreSQL and drop the exhausted tables

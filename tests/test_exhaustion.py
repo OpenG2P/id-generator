@@ -8,7 +8,11 @@ drained test_ns_1 and test_ns_2.
 
 import pytest
 
-pytestmark = [pytest.mark.exhaustion, pytest.mark.order(4)]
+pytestmark = [
+    pytest.mark.exhaustion,
+    pytest.mark.order(4),
+    pytest.mark.asyncio(loop_scope="session"),
+]
 
 
 # -------------------------------------------------------------------------

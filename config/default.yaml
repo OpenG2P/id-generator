@@ -19,8 +19,8 @@ id_generator:
   # Namespaces (add/remove here, restart pods to apply)
   namespaces:
     farmer_id:
-      id_length: 5
+      id_length: 6
     household_id:
-      id_length: 5
+      id_length: 6
     test_perf_ns:
       id_length: 10

@@ -121,7 +121,7 @@ No callback or confirmation from the calling service is required.
 - When a caller requests an ID and the pool is empty **and** no more valid IDs can be generated (full search space exhausted), the service returns a clear error response.
 - The error must indicate that the ID space for that namespace is exhausted.
 - No warning threshold — only a hard error when fully exhausted.
-- **Note**: The effective ID space is significantly smaller than the raw numeric range due to the generation filters. For example, a 10-digit ID starting with 2-9 has a raw space of ~8x10^9, but filters may reduce this to ~40-60% of that.
+- **Note**: The effective ID space is significantly smaller than the raw numeric range due to the generation filters. The raw space is `8 × 10^(id_length - 2)` (first digit restricted to 2-9, last digit is checksum). Filters typically reduce this to 15-60% depending on ID length and filter parameters. Shorter IDs are more heavily constrained (e.g., a 5-digit ID has ~3,600 valid IDs out of 8,000 raw candidates; a 6-digit ID has ~35,000 out of 80,000).
 
 ---
 

@@ -13,7 +13,11 @@ import time
 
 import pytest
 
-pytestmark = [pytest.mark.performance, pytest.mark.order(5)]
+pytestmark = [
+    pytest.mark.performance,
+    pytest.mark.order(5),
+    pytest.mark.asyncio(loop_scope="session"),
+]
 
 # Default performance thresholds (seconds)
 # These are generous; tighten per environment as needed.

@@ -49,7 +49,9 @@ async def count_available(namespace: str) -> int:
 async def _insert_batch(namespace: str, ids: list[str]) -> int:
     """Insert a batch of IDs into the pool, skipping duplicates.
 
-    Uses parameterized queries to prevent SQL injection.
+    Inserts in small sub-batches (100 rows per transaction) to avoid
+    holding long-running locks that can cause deadlocks with concurrent
+    issue requests.
 
     Args:
         namespace: Target namespace.
@@ -63,19 +65,21 @@ async def _insert_batch(namespace: str, ids: list[str]) -> int:
 
     tbl = table_name(namespace)
     inserted = 0
+    chunk_size = 100
 
-    async with get_session() as session:
-        async with session.begin():
-            # Use executemany with parameterized INSERT for safety
-            for id_val in ids:
-                result = await session.execute(
-                    text(
-                        f"INSERT INTO {tbl} (id_value) VALUES (:id_val) "
-                        f"ON CONFLICT DO NOTHING"
-                    ),
-                    {"id_val": id_val},
-                )
-                inserted += result.rowcount
+    for i in range(0, len(ids), chunk_size):
+        chunk = ids[i : i + chunk_size]
+        async with get_session() as session:
+            async with session.begin():
+                for id_val in chunk:
+                    result = await session.execute(
+                        text(
+                            f"INSERT INTO {tbl} (id_value) VALUES (:id_val) "
+                            f"ON CONFLICT DO NOTHING"
+                        ),
+                        {"id_val": id_val},
+                    )
+                    inserted += result.rowcount
 
     return inserted
 
