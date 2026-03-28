@@ -1,0 +1,26 @@
+id_generator:
+  # Global filter rules
+  sequence_limit: 3
+  repeating_limit: 2
+  repeating_block_limit: 2
+  conjugative_even_digits_limit: 3
+  digits_group_limit: 5
+  reverse_digits_group_limit: 5
+  not_start_with: ["0", "1"]
+  restricted_numbers: []
+
+  # Pool management
+  pool_min_threshold: 1000
+  pool_generation_batch_size: 5000
+  pool_check_interval_seconds: 30
+  exhaustion_max_attempts: 1000
+  sub_batch_size: 10000
+
+  # Namespaces (add/remove here, restart pods to apply)
+  namespaces:
+    test_ns_1:
+      id_length: 5
+    test_ns_2:
+      id_length: 5
+    test_perf_ns:
+      id_length: 10

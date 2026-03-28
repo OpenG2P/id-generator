@@ -1,0 +1,18 @@
+Metadata-Version: 2.4
+Name: id-generator
+Version: 0.1.0
+Summary: Unique numeric ID generator service with pre-generated pools and multi-namespace support
+Requires-Python: >=3.11
+Requires-Dist: fastapi>=0.115
+Requires-Dist: uvicorn[standard]>=0.30
+Requires-Dist: sqlalchemy[asyncio]>=2.0
+Requires-Dist: asyncpg>=0.29
+Requires-Dist: pydantic-settings>=2.0
+Requires-Dist: pyyaml>=6.0
+Provides-Extra: test
+Requires-Dist: pytest>=8.0; extra == "test"
+Requires-Dist: pytest-asyncio>=0.23; extra == "test"
+Requires-Dist: pytest-html>=4.0; extra == "test"
+Requires-Dist: pytest-ordering>=0.6; extra == "test"
+Requires-Dist: httpx>=0.27; extra == "test"
+Requires-Dist: pyyaml>=6.0; extra == "test"
