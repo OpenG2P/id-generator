@@ -5,6 +5,8 @@ All tests are API-level integration tests against a running service.
 ID type names are auto-discovered from the service's /config endpoint.
 """
 
+pytest_plugins = ["report_plugin"]
+
 import os
 
 import httpx

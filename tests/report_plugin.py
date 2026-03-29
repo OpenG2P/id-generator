@@ -2,7 +2,7 @@
 Custom pytest plugin for enhanced HTML test reports.
 
 Injects service version, build info, and target URL into the pytest-html
-report header. Provides a clear summary of what was tested and when.
+report. Works with pytest-html >= 4.0 and pytest-metadata >= 3.0.
 """
 
 import os
@@ -34,7 +34,6 @@ def pytest_sessionstart(session):
 
     session.config._idgen_metadata["target_url"] = base_url
 
-    # Use synchronous httpx client (session hooks are sync)
     try:
         with httpx.Client(timeout=10.0) as client:
             resp = client.get(f"{base_url}/v1/idgenerator/version")
@@ -53,31 +52,24 @@ def pytest_sessionstart(session):
     except Exception:
         pass  # Metadata stays as "unknown"
 
+    # Update the pytest-metadata stash so it appears in the Environment table.
+    # pytest-metadata 3.x stores data in config.stash[metadata_key].
+    # This runs after pytest_configure, so the stash already exists.
+    try:
+        from pytest_metadata.plugin import metadata_key
+
+        meta = session.config._idgen_metadata
+        stash = session.config.stash[metadata_key]
+        stash["Service Version"] = meta["service_version"]
+        stash["Git Commit"] = meta["git_commit"]
+        stash["Build Time"] = meta["build_time"]
+        stash["Target URL"] = meta["target_url"]
+        stash["Test Run Time"] = meta["test_run_time"]
+    except Exception:
+        pass
+
 
 @pytest.hookimpl(optionalhook=True)
 def pytest_html_report_title(report):
     """Set the HTML report title."""
     report.title = "ID Generator - Test Report"
-
-
-@pytest.hookimpl(optionalhook=True)
-def pytest_html_results_summary(prefix, summary, postfix):
-    """Inject service metadata into the report summary section."""
-    # This hook is only available if pytest-html is installed
-    pass
-
-
-@pytest.hookimpl(tryfirst=True, optionalhook=True)
-def pytest_metadata(metadata, config):
-    """
-    Add service metadata to the Environment table in the HTML report.
-
-    This uses pytest-metadata (bundled with pytest-html) to populate
-    the 'Environment' section of the report.
-    """
-    meta = config._idgen_metadata
-    metadata["Service Version"] = meta["service_version"]
-    metadata["Git Commit"] = meta["git_commit"]
-    metadata["Build Time"] = meta["build_time"]
-    metadata["Target URL"] = meta["target_url"]
-    metadata["Test Run Time"] = meta["test_run_time"]
