@@ -246,8 +246,10 @@ id-generator/
 │   └── default.yaml             # Default configuration
 ├── docs/
 │   ├── functional-specs.md
+│   ├── api.md                   # API reference (endpoints, errors)
 │   ├── technical-architecture.md
 │   ├── test-plan.md
+│   ├── helm-chart.md
 │   └── local-setup.md           # This file
 ├── src/
 │   └── id_generator/
