@@ -27,7 +27,7 @@ questions:
 
 # ID Types & Pool
 - variable: idGenerator.appConfig.idTypesNote
-  description: "Default ID types: farmer_id (6 digits), household_id (6 digits). To add, remove, or modify ID types, switch to 'Edit YAML' and update the idGenerator.appConfig.idTypes section."
+  description: "Default ID types: farmer_id (12 digits), household_id (10 digits). To add, remove, or modify ID types, switch to 'Edit YAML' and update the idGenerator.appConfig.idTypes section."
   type: string
   label: ID Types Configuration
   group: ID Types & Pool
