@@ -177,6 +177,8 @@ curl http://localhost:8000/v1/idgenerator/farmer_id/id/validate/57382
 Tests **auto-discover** ID type names and ID lengths from the running service
 via `GET /v1/idgenerator/config`. No ID type names need to be specified.
 
+A complete, human-readable list of all test cases is maintained in [`tests/test_cases.yaml`](../tests/test_cases.yaml). Each entry includes the test ID, name, category, file, and description.
+
 With the service running locally:
 
 ```bash
