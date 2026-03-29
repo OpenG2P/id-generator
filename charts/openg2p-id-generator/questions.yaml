@@ -25,62 +25,31 @@ questions:
   label: ID Generator
   group: General
 
-# Database
-- variable: global.idGeneratorDB
-  description: Name of the ID Generator database
+# ID Types & Pool
+- variable: idGenerator.appConfig.idTypesNote
+  description: "Default ID types: farmer_id (6 digits), household_id (6 digits). To add, remove, or modify ID types, switch to 'Edit YAML' and update the idGenerator.appConfig.idTypes section."
   type: string
-  label: Database Name
-  group: Database
+  label: ID Types Configuration
+  group: ID Types & Pool
+  default: "See description — edit YAML to configure"
 
-- variable: global.idGeneratorDBUser
-  description: Database user name for the ID Generator
-  type: string
-  label: Database User
-  group: Database
-
-- variable: global.idGeneratorDBSecret
-  description: Kubernetes secret that holds the database user password
-  type: string
-  label: Database Secret Name
-  group: Database
-
-- variable: global.idGeneratorDBUserPasswordKey
-  description: Key in the above secret containing the database user password
-  type: string
-  label: Database Secret Password Key
-  group: Database
-
-# ID Types
-- variable: idGenerator.appConfig.idTypes.farmer_id.idLength
-  description: "Number of digits for farmer_id (set to 0 or remove to disable this ID type)"
-  type: int
-  label: "farmer_id — ID Length"
-  group: ID Types
-
-- variable: idGenerator.appConfig.idTypes.household_id.idLength
-  description: "Number of digits for household_id (set to 0 or remove to disable this ID type)"
-  type: int
-  label: "household_id — ID Length"
-  group: ID Types
-
-# Pool Management
 - variable: idGenerator.appConfig.poolMinThreshold
   description: Minimum number of available IDs in the pool before background replenishment triggers
   type: int
   label: Pool Minimum Threshold
-  group: Pool Management
+  group: ID Types & Pool
 
 - variable: idGenerator.appConfig.poolGenerationBatchSize
   description: Number of IDs to generate per replenishment cycle
   type: int
   label: Pool Generation Batch Size
-  group: Pool Management
+  group: ID Types & Pool
 
 - variable: idGenerator.appConfig.poolCheckIntervalSeconds
   description: Interval in seconds between pool level checks
   type: int
   label: Pool Check Interval (seconds)
-  group: Pool Management
+  group: ID Types & Pool
 
 # Image
 - variable: idGenerator.image.repository
