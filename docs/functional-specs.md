@@ -125,7 +125,7 @@ No callback or confirmation from the calling service is required.
 
 ### Estimated ID space by length (after filters)
 
-These estimates were generated using `scripts/space_estimator.py` with default filter parameters.
+These estimates were generated using `scripts/space_estimator.py`.
 
 | ID Length (digits) | Estimated Valid IDs |
 |--------------------|---------------------|
@@ -140,8 +140,6 @@ These estimates were generated using `scripts/space_estimator.py` with default f
 | 14                 | 1,416,056,507,189   |
 | 15                 | 13,285,071,919,224  |
 | 16                 | 123,889,361,047,011 |
-
-> **Note**: Actual counts depend on filter parameters (`sequence_limit`, `repeating_limit`, etc.). The estimates above use the default configuration. Use `scripts/space_estimator.py` to calculate for custom filter settings.
 
 ---
 
