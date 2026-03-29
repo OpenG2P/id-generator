@@ -51,10 +51,16 @@ questions:
   group: Database
 
 # ID Types
-- variable: idGenerator.appConfig.idTypes
-  description: "ID generation types and their configuration. Each ID type gets its own DB table. Example: farmer_id with idLength 6."
-  type: map
-  label: ID Types
+- variable: idGenerator.appConfig.idTypes.farmer_id.idLength
+  description: "Number of digits for farmer_id (set to 0 or remove to disable this ID type)"
+  type: int
+  label: "farmer_id — ID Length"
+  group: ID Types
+
+- variable: idGenerator.appConfig.idTypes.household_id.idLength
+  description: "Number of digits for household_id (set to 0 or remove to disable this ID type)"
+  type: int
+  label: "household_id — ID Length"
   group: ID Types
 
 # Pool Management
