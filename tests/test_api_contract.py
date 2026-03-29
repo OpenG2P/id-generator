@@ -22,7 +22,7 @@ pytestmark = [
 # API-001: Issue ID response envelope
 # -------------------------------------------------------------------------
 class TestAPI001:
-    """POST Issue ID returns correct MOSIP response envelope."""
+    """POST Issue ID returns correct response envelope."""
 
     async def test_issue_response_envelope(
         self, client, id_type_1, issue_id
@@ -211,7 +211,7 @@ class TestAPI009:
 # API-010: Version response envelope
 # -------------------------------------------------------------------------
 class TestAPI010:
-    """Version response follows the standard MOSIP envelope."""
+    """Version response follows the standard response envelope."""
 
     async def test_version_response_envelope(self, client):
         resp = await client.get("/v1/idgenerator/version")

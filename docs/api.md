@@ -20,7 +20,7 @@ All APIs are **OpenAPI 3.1 compliant**. FastAPI auto-generates a machine-readabl
 
 ## 2. Standard Response Envelope
 
-All endpoints return a consistent MOSIP-style envelope with `Content-Type: application/json`.
+All endpoints return a consistent envelope with `Content-Type: application/json`.
 
 **Success**:
 ```json
@@ -80,7 +80,7 @@ Issues a single AVAILABLE ID from the specified ID type pool and marks it as TAK
 **Response (HTTP `200 OK`)**:
 ```json
 {
-  "id": "mosip.idgenerator",
+  "id": "openg2p.idgenerator",
   "version": "1.0",
   "responsetime": "2026-03-27T10:00:00.000Z",
   "response": {
@@ -113,7 +113,7 @@ It does **not** check whether the ID exists in the database or whether it is AVA
 **Response (HTTP `200 OK`)** — both valid and invalid IDs return 200; the result is in the body:
 ```json
 {
-  "id": "mosip.idgenerator",
+  "id": "openg2p.idgenerator",
   "version": "1.0",
   "responsetime": "2026-03-27T10:00:00.000Z",
   "response": {
@@ -151,7 +151,7 @@ Returns the service version and build metadata. Used by test frameworks and moni
 **Response (HTTP `200 OK`)**:
 ```json
 {
-  "id": "mosip.idgenerator",
+  "id": "openg2p.idgenerator",
   "version": "1.0",
   "responsetime": "2026-03-28T10:00:00.000Z",
   "response": {
@@ -178,7 +178,7 @@ Returns the active service configuration including all configured ID types and t
 **Response (HTTP `200 OK`)**:
 ```json
 {
-  "id": "mosip.idgenerator",
+  "id": "openg2p.idgenerator",
   "version": "1.0",
   "responsetime": "2026-03-28T10:00:00.000Z",
   "response": {

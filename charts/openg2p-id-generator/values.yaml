@@ -103,7 +103,7 @@ idGenerator:
       # social_id:
       #   idLength: 10
 
-    # -- Filter rules (MOSIP UIN spec). Adjust only if you understand the impact.
+    # -- Filter rules. Adjust only if you understand the impact on ID space.
     sequenceLimit: 3
     repeatingLimit: 2
     repeatingBlockLimit: 2

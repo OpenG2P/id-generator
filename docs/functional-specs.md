@@ -10,7 +10,7 @@
 
 A FastAPI-based service that generates unique, random numeric IDs for multiple consuming applications (social ID, farmer ID, family ID, health ID, etc.). Each application operates within its own **ID type**, with an independent pool of pre-generated IDs. The service is designed to be horizontally scalable on Kubernetes.
 
-**Reference**: Based on [MOSIP UIN Generator](https://docs.mosip.io/1.2.0/id-lifecycle-management/supporting-components/commons/id-generator#uin-generation-filters) with extensions for multi-ID-type support.
+**Reference**: The ID generation filters are inspired by [MOSIP UIN Generator](https://docs.mosip.io/1.2.0/id-lifecycle-management/supporting-components/commons/id-generator#uin-generation-filters).
 
 ---
 
@@ -237,5 +237,4 @@ CREATE INDEX idx_social_id_available ON id_pool_social_id (status)
 
 ## 13. Reference
 
-- MOSIP UIN Generator: [Documentation](https://docs.mosip.io/1.2.0/id-lifecycle-management/supporting-components/commons/id-generator#uin-generation-filters)
-- MOSIP UIN Generator Source: `commons/kernel/kernel-idgenerator-service/src/main/java/io/mosip/kernel/uingenerator`
+- ID generation filters inspired by: [MOSIP UIN Generator](https://docs.mosip.io/1.2.0/id-lifecycle-management/supporting-components/commons/id-generator#uin-generation-filters)

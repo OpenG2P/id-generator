@@ -210,7 +210,7 @@ These tests verify correct behavior when the ID space is fully consumed.
 | 3.1 | `EXS-001` | `test_exhaustion_returns_error` | After EXH-001 has consumed all IDs in `farmer_id`, `POST` one more Issue ID. Assert: HTTP `410 Gone`, error code `IDG-002` with appropriate message. | `exhaustion` |
 | 3.2 | `EXS-002` | `test_exhaustion_error_is_permanent` | After EXS-001, `POST` another Issue ID from the same ID type. Assert: still HTTP `410`, `IDG-002` (not a transient error). | `exhaustion` |
 | 3.3 | `EXS-003` | `test_other_id_type_unaffected` | After `farmer_id` is exhausted, `POST` Issue ID from `household_id` (if not yet exhausted). Assert: HTTP `200`, succeeds normally. ID types are independent. | `exhaustion` |
-| 3.4 | `EXS-004` | `test_exhaustion_response_format` | Verify the exhaustion error response matches the standard MOSIP error envelope: HTTP `410`, `Content-Type: application/json`, `response` is `null`, `errors` array contains `errorCode` and `message`. | `exhaustion` |
+| 3.4 | `EXS-004` | `test_exhaustion_response_format` | Verify the exhaustion error response matches the standard error envelope: HTTP `410`, `Content-Type: application/json`, `response` is `null`, `errors` array contains `errorCode` and `message`. | `exhaustion` |
 
 ### Category 4: Response Time (`test_performance.py`)
 
@@ -238,7 +238,7 @@ These tests verify OpenAPI compliance, HTTP status codes, response structure, er
 | 5.7 | `API-007` | `test_issued_id_correct_length` | `POST` to Issue ID. Assert: length matches the ID type configuration. | `api_contract` |
 | 5.8 | `API-008` | `test_issued_id_passes_validation` | `POST` to Issue ID, then `GET` Validate. Assert: `valid: true`. | `api_contract` |
 | 5.9 | `API-009` | `test_version_endpoint` | `GET` Version. Assert: HTTP `200`, response contains `service_version` (semver format), `build_time`, `git_commit`. | `api_contract` |
-| 5.10 | `API-010` | `test_version_response_envelope` | Verify the version response follows the standard MOSIP envelope: `id`, `version`, `responsetime`, `response`, `errors`. | `api_contract` |
+| 5.10 | `API-010` | `test_version_response_envelope` | Verify the version response follows the standard response envelope: `id`, `version`, `responsetime`, `response`, `errors`. | `api_contract` |
 | 5.11 | `API-011` | `test_issue_id_get_not_allowed` | `GET` (not `POST`) to Issue ID endpoint. Assert: HTTP `405 Method Not Allowed`. Confirms only `POST` is accepted. | `api_contract` |
 | 5.12 | `API-012` | `test_invalid_id_type_format_returns_422` | `POST` to Issue ID with an invalid ID type format (e.g., `123invalid`, `UPPER`, `ns with spaces`). Assert: HTTP `422 Unprocessable Entity`. | `api_contract` |
 | 5.13 | `API-013` | `test_invalid_id_format_returns_422` | `GET` Validate with an invalid ID format (e.g., `abc`, `12.34`). Assert: HTTP `422 Unprocessable Entity`. | `api_contract` |

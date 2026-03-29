@@ -282,7 +282,7 @@
   markers: [exhaustion]
   file: test_exhaustion.py
   description: >
-    Exhaustion error matches MOSIP envelope: HTTP 410, application/json,
+    Exhaustion error matches standard envelope: HTTP 410, application/json,
     response=null, errors array with errorCode and message.
 
 # =========================================================================
@@ -336,7 +336,7 @@
   file: test_api_contract.py
   description: >
     POST Issue ID returns HTTP 200, Content-Type application/json,
-    MOSIP envelope with id, version, responsetime, response.id, errors=[].
+    response envelope with id, version, responsetime, response.id, errors=[].
 
 - id: API-002
   name: test_validate_response_envelope
@@ -344,7 +344,7 @@
   markers: [api_contract]
   file: test_api_contract.py
   description: >
-    GET Validate returns HTTP 200, MOSIP envelope with response.id
+    GET Validate returns HTTP 200, response envelope with response.id
     and response.valid (boolean).
 
 - id: API-003
@@ -410,7 +410,7 @@
   markers: [api_contract]
   file: test_api_contract.py
   description: >
-    Version response follows MOSIP envelope: id, version, responsetime,
+    Version response follows standard envelope: id, version, responsetime,
     response, errors=[].
 
 - id: API-011

@@ -88,7 +88,7 @@ class TestEXS003:
 # EXS-004: Exhaustion response format
 # -------------------------------------------------------------------------
 class TestEXS004:
-    """Exhaustion error response matches the standard MOSIP envelope."""
+    """Exhaustion error response matches the standard response envelope."""
 
     async def test_exhaustion_response_format(
         self, client, id_type_1, id_type_1_exhausted, issue_id

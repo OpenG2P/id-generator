@@ -145,7 +145,7 @@ idTypes:
 
 #### Filter Rules
 
-MOSIP UIN-compliant filter rules applied during ID generation. Adjust only if you understand the impact on ID space and validity.
+Filter rules applied during ID generation. Adjust only if you understand the impact on ID space and validity.
 
 | Parameter | Description | Default |
 |---|---|---|

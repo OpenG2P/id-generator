@@ -55,7 +55,7 @@ id-generator/
 │       ├── models.py            # SQLAlchemy ORM model (id_pool table factory per ID type)
 │       ├── api/
 │       │   ├── router.py        # FastAPI routes (issue, validate, health, version, config)
-│       │   └── schema.py        # Pydantic request/response models (MOSIP envelope)
+│       │   └── schema.py        # Pydantic request/response models (response envelope)
 │       ├── generator/
 │       │   ├── engine.py        # Core ID generation (random + checksum)
 │       │   ├── filters.py       # All 10 filter implementations
@@ -274,7 +274,7 @@ Returns the service version and build metadata. Used by test frameworks, monitor
 
 ```json
 {
-  "id": "mosip.idgenerator",
+  "id": "openg2p.idgenerator",
   "version": "1.0",
   "responsetime": "2026-03-28T10:00:00.000Z",
   "response": {
