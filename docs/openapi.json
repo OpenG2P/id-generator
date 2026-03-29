@@ -1,0 +1,206 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "ID Generator",
+    "description": "Unique numeric ID generator service with multi-ID-type support",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/v1/idgenerator/{id_type}/id": {
+      "post": {
+        "summary": "Issue Id",
+        "description": "Issue a single ID from the specified ID type pool.",
+        "operationId": "issue_id_v1_idgenerator__id_type__id_post",
+        "parameters": [
+          {
+            "name": "id_type",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{1,63}$",
+              "title": "Id Type"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/idgenerator/{id_type}/id/validate/{id_value}": {
+      "get": {
+        "summary": "Validate Id",
+        "description": "Validate whether an ID is structurally valid for an ID type.",
+        "operationId": "validate_id_v1_idgenerator__id_type__id_validate__id_value__get",
+        "parameters": [
+          {
+            "name": "id_type",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{1,63}$",
+              "title": "Id Type"
+            }
+          },
+          {
+            "name": "id_value",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{1,32}$",
+              "title": "Id Value"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/idgenerator/health": {
+      "get": {
+        "summary": "Health",
+        "description": "Health check endpoint. Returns 200 if service is healthy.",
+        "operationId": "health_v1_idgenerator_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/idgenerator/version": {
+      "get": {
+        "summary": "Version",
+        "description": "Return service version and build metadata.",
+        "operationId": "version_v1_idgenerator_version_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/idgenerator/config": {
+      "get": {
+        "summary": "Config",
+        "description": "Return the active service configuration (ID types, filter rules).\n\nUseful for tests and diagnostics to discover configured ID types\nwithout hardcoding names.",
+        "operationId": "config_v1_idgenerator_config_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}
