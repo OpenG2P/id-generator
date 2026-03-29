@@ -3,7 +3,7 @@
 # N = number of digits in the ID
 import random
 
-N = 6
+N = 16
 def estimate_uins(sample_size=1000000):
     # Define digits and even digits
     digits = list(range(N))
@@ -105,6 +105,7 @@ def estimate_uins(sample_size=1000000):
     total_possible_sequences = 8 * (9 ** (N-2))  # First digit has 8 options, next 8 digits have 9 options each
     estimated_total_valid_uins = (valid_uins / total_samples) * total_possible_sequences
 
+    print(f"Number of digits: {N}")
     print(f"Total samples generated: {total_samples}")
     print(f"Valid UINs found: {valid_uins}")
     print(f"Estimated total valid UINs: {int(estimated_total_valid_uins)}")

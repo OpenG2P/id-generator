@@ -121,7 +121,27 @@ No callback or confirmation from the calling service is required.
 - When a caller requests an ID and the pool is empty **and** no more valid IDs can be generated (full search space exhausted), the service returns a clear error response.
 - The error must indicate that the ID space for that ID type is exhausted.
 - No warning threshold — only a hard error when fully exhausted.
-- **Note**: The effective ID space is significantly smaller than the raw numeric range due to the generation filters. The raw space is `8 × 10^(id_length - 2)` (first digit restricted to 2-9, last digit is checksum). Filters typically reduce this to 15-60% depending on ID length and filter parameters. Shorter IDs are more heavily constrained (e.g., a 5-digit ID has ~3,600 valid IDs out of 8,000 raw candidates; a 6-digit ID has ~35,000 out of 80,000).
+- **Note**: The effective ID space is significantly smaller than the raw numeric range due to the generation filters. The raw space is `8 × 10^(id_length - 2)` (first digit restricted to 2-9, last digit is checksum). Filters typically reduce this to 15-60% depending on ID length and filter parameters. Shorter IDs are more heavily constrained. An estimation of the effective space size after filters is available in the table below.
+
+### Estimated ID space by length (after filters)
+
+These estimates were generated using `scripts/space_estimator.py` with default filter parameters.
+
+| ID Length (digits) | Estimated Valid IDs |
+|--------------------|---------------------|
+| 6                  | 35,919              |
+| 7                  | 244,348             |
+| 8                  | 2,382,981           |
+| 9                  | 16,379,411          |
+| 10                 | 164,804,199         |
+| 11                 | 1,621,760,763       |
+| 12                 | 15,716,806,211      |
+| 13                 | 149,894,769,328     |
+| 14                 | 1,416,056,507,189   |
+| 15                 | 13,285,071,919,224  |
+| 16                 | 123,889,361,047,011 |
+
+> **Note**: Actual counts depend on filter parameters (`sequence_limit`, `repeating_limit`, etc.). The estimates above use the default configuration. Use `scripts/space_estimator.py` to calculate for custom filter settings.
 
 ---
 
