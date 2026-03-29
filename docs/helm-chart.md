@@ -5,7 +5,7 @@ The `openg2p-id-generator` Helm chart deploys the ID Generator service on Kubern
 ## Chart Location
 
 ```
-charts/id-generator/
+charts/openg2p-id-generator/
 ```
 
 ## Prerequisites
@@ -30,14 +30,14 @@ charts/id-generator/
 helm repo add openg2p https://openg2p.github.io/openg2p-helm
 helm repo update
 
-helm install id-generator charts/id-generator \
+helm install id-generator charts/openg2p-id-generator \
   -n <namespace> --create-namespace
 ```
 
 ### Install with Custom ID Types
 
 ```bash
-helm install id-generator charts/id-generator \
+helm install id-generator charts/openg2p-id-generator \
   -n trial --create-namespace \
   --set idGenerator.appConfig.idTypes.farmer_id.idLength=6 \
   --set idGenerator.appConfig.idTypes.national_id.idLength=10
@@ -46,7 +46,7 @@ helm install id-generator charts/id-generator \
 ### Install with Values File Override
 
 ```bash
-helm install id-generator charts/id-generator \
+helm install id-generator charts/openg2p-id-generator \
   -n trial --create-namespace \
   -f my-values.yaml
 ```
@@ -75,14 +75,14 @@ idGenerator:
 ### Dry-Run / Debug
 
 ```bash
-helm install id-generator charts/id-generator \
+helm install id-generator charts/openg2p-id-generator \
   -n trial --dry-run --debug > out.yaml
 ```
 
 ## Upgrade
 
 ```bash
-helm upgrade id-generator charts/id-generator -n trial
+helm upgrade id-generator charts/openg2p-id-generator -n trial
 ```
 
 To add or remove ID types, update `appConfig.idTypes` in your values and run `helm upgrade`. The pods will restart with the new ConfigMap.
