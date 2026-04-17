@@ -195,7 +195,7 @@ For each ID type in config:
 - **No leader election needed** — any pod can generate, but only one at a time per ID type.
 - **`pg_try_advisory_lock`** is non-blocking — if another pod holds the lock, we skip instantly (no waiting).
 - **Database is the coordinator** — no need for Redis, ZooKeeper, or K8s leader election.
-- **Per-ID-type locks** — Pod A can generate for `social_id` while Pod B generates for `farmer_id` simultaneously.
+- **Per-ID-type locks** — Pod A can generate for `social_id` while Pod B generates for `farmer` simultaneously.
 
 ### 5.3 Alternatives Considered and Rejected
 
@@ -365,7 +365,7 @@ id_generator:
   id_types:
     social_id:
       id_length: 10
-    farmer_id:
+    farmer:
       id_length: 12
     health_id:
       id_length: 10

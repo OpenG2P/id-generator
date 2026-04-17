@@ -96,9 +96,9 @@ idGenerator:
     # -- ID types for ID generation. Each ID type gets its own DB table.
     # -- Add or remove ID types here; restart pods to apply.
     idTypes:
-      farmer_id:
-        idLength: 12 
-      household_id:
+      farmer:
+        idLength: 12
+      household:
         idLength: 10
       # social_id:
       #   idLength: 10

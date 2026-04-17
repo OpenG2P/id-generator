@@ -41,7 +41,7 @@ All endpoints return a consistent envelope with `Content-Type: application/json`
   "responsetime": "2026-03-27T10:00:00.000Z",
   "response": null,
   "errors": [
-    { "errorCode": "IDG-001", "message": "No IDs available for ID type 'farmer_id'" }
+    { "errorCode": "IDG-001", "message": "No IDs available for ID type 'farmer'" }
   ]
 }
 ```
@@ -183,8 +183,8 @@ Returns the active service configuration including all configured ID types and t
   "responsetime": "2026-03-28T10:00:00.000Z",
   "response": {
     "id_types": {
-      "farmer_id": { "id_length": 10 },
-      "household_id": { "id_length": 10 }
+      "farmer": { "id_length": 12 },
+      "household": { "id_length": 10 }
     },
     "filter_rules": {
       "sequence_limit": 3,

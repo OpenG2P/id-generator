@@ -82,7 +82,7 @@ export DB_PASSWORD=postgres
 ### Application Config
 
 The default configuration is in `config/default.yaml`. It includes three
-ID types (`farmer_id`, `household_id`, `test_perf_id`).
+ID types (`farmer`, `household`, `test_perf_id`).
 
 To override any setting, either:
 - Edit `config/default.yaml` directly, or
@@ -126,17 +126,17 @@ uvicorn id_generator.main:app --host 0.0.0.0 --port 8000 --reload
 
 **First startup** will:
 1. Connect to PostgreSQL
-2. Create tables for each configured ID type (`id_pool_farmer_id`, etc.)
+2. Create tables for each configured ID type (`id_pool_farmer`, etc.)
 3. Generate and insert IDs until each ID type has at least `pool_min_threshold` IDs
 4. Start accepting HTTP requests
 
 You should see logs like:
 ```
 INFO  id_generator.main: Initializing database engine...
-INFO  id_generator.main: Setting up ID type 'farmer_id' (id_length=5)...
-INFO  id_generator.pool.manager: ID type 'farmer_id': 0 AVAILABLE IDs (threshold: 1000)
-INFO  id_generator.pool.manager: ID type 'farmer_id': generated 1000, inserted 1000 (...)
-INFO  id_generator.pool.manager: ID type 'farmer_id': pool ready with 1000 AVAILABLE IDs
+INFO  id_generator.main: Setting up ID type 'farmer' (id_length=5)...
+INFO  id_generator.pool.manager: ID type 'farmer': 0 AVAILABLE IDs (threshold: 1000)
+INFO  id_generator.pool.manager: ID type 'farmer': generated 1000, inserted 1000 (...)
+INFO  id_generator.pool.manager: ID type 'farmer': pool ready with 1000 AVAILABLE IDs
 ...
 INFO  id_generator.main: Startup complete. All ID type pools are ready.
 INFO  id_generator.main: Background pool replenishment started (interval: 30s)
@@ -163,11 +163,11 @@ curl http://localhost:8000/v1/idgenerator/version
 # View configured ID types
 curl http://localhost:8000/v1/idgenerator/config
 
-# Issue an ID (replace farmer_id with your ID type name)
-curl -X POST http://localhost:8000/v1/idgenerator/farmer_id/id
+# Issue an ID (replace farmer with your ID type name)
+curl -X POST http://localhost:8000/v1/idgenerator/farmer/id
 
-# Validate an ID (replace farmer_id and 57382 with actual values)
-curl http://localhost:8000/v1/idgenerator/farmer_id/id/validate/57382
+# Validate an ID (replace farmer and 57382 with actual values)
+curl http://localhost:8000/v1/idgenerator/farmer/id/validate/57382
 ```
 
 ---
@@ -231,9 +231,9 @@ consumed. To re-run them, drop their tables and restart:
 
 ```bash
 # Connect to PostgreSQL and drop the exhausted tables
-# (replace farmer_id / household_id with your actual ID type names)
-psql -h localhost -U postgres -d idgenerator -c "DROP TABLE IF EXISTS id_pool_farmer_id;"
-psql -h localhost -U postgres -d idgenerator -c "DROP TABLE IF EXISTS id_pool_household_id;"
+# (replace farmer / household with your actual ID type names)
+psql -h localhost -U postgres -d idgenerator -c "DROP TABLE IF EXISTS id_pool_farmer;"
+psql -h localhost -U postgres -d idgenerator -c "DROP TABLE IF EXISTS id_pool_household;"
 
 # Restart the service (tables will be re-created and pools re-filled)
 ```

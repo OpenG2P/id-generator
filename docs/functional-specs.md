@@ -16,7 +16,7 @@ A FastAPI-based service that generates unique, random numeric IDs for multiple c
 
 ## 2. ID Type / Realm
 
-- Each consuming application is assigned an **ID type** (e.g., `social_id`, `farmer_id`, `health_id`).
+- Each consuming application is assigned an **ID type** (e.g., `social_id`, `farmer`, `health_id`).
 - ID types are **pre-configured** (via config file / environment), not created via API.
 - Each ID type has **one configurable parameter: ID length** (up to 32 digits).
 - All ID generation/filter rules are **global** (same across all ID types).
@@ -181,7 +181,7 @@ id_generator:
   id_types:
     social_id:
       id_length: 10
-    farmer_id:
+    farmer:
       id_length: 12
     health_id:
       id_length: 10

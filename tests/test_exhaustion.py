@@ -3,7 +3,7 @@ Category 3: Space Exhaustion Tests (EXS-001 through EXS-004)
 
 Verify correct behavior when the ID space is fully consumed.
 These tests MUST run after the exhaustive tests (Phase 3) have
-drained id_type_1 and id_type_2 (typically farmer_id and household_id).
+drained id_type_1 and id_type_2 (typically farmer and household).
 """
 
 import pytest

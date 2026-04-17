@@ -5,7 +5,7 @@ These tests issue EVERY possible ID from small-space ID types (length=5)
 and verify uniqueness, randomness, distribution, and ID type independence.
 
 WARNING: Running these tests permanently consumes all IDs in id_type_1
-and id_type_2 (typically farmer_id and household_id). The ID types must
+and id_type_2 (typically farmer and household). The ID types must
 be reset (truncate tables) before re-running.
 """
 

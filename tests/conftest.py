@@ -196,7 +196,7 @@ def issue_id():
     Callable fixture that issues an ID from an ID type.
 
     Usage:
-        resp = await issue_id(client, "farmer_id")
+        resp = await issue_id(client, "farmer")
     """
 
     async def _issue(cl: httpx.AsyncClient, id_type: str):
@@ -211,7 +211,7 @@ def validate_id():
     Callable fixture that validates an ID against an ID type.
 
     Usage:
-        resp = await validate_id(client, "farmer_id", "57382")
+        resp = await validate_id(client, "farmer", "57382")
     """
 
     async def _validate(

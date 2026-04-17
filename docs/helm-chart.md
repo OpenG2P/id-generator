@@ -39,7 +39,7 @@ helm install id-generator charts/openg2p-id-generator \
 ```bash
 helm install id-generator charts/openg2p-id-generator \
   -n trial --create-namespace \
-  --set idGenerator.appConfig.idTypes.farmer_id.idLength=6 \
+  --set idGenerator.appConfig.idTypes.farmer.idLength=6 \
   --set idGenerator.appConfig.idTypes.national_id.idLength=10
 ```
 
@@ -62,9 +62,9 @@ idGenerator:
   replicaCount: 3
   appConfig:
     idTypes:
-      farmer_id:
+      farmer:
         idLength: 6
-      household_id:
+      household:
         idLength: 6
       national_id:
         idLength: 12
@@ -137,10 +137,10 @@ Default ID types:
 
 ```yaml
 idTypes:
-  farmer_id:
-    idLength: 6
-  household_id:
-    idLength: 6
+  farmer:
+    idLength: 12
+  household:
+    idLength: 10
 ```
 
 #### Filter Rules
