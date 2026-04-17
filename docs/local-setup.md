@@ -393,6 +393,66 @@ Docker image accepts these Uvicorn-specific variables:
 | `UVICORN_WORKERS` | `1` | Number of worker processes |
 | `UVICORN_LOG_LEVEL` | `info` | Log level (`debug`, `info`, `warning`, `error`) |
 
+### Building multi-architecture images
+
+The official image supports both `linux/amd64` (Intel/AMD servers) and
+`linux/arm64` (Apple Silicon, ARM servers). Use Docker `buildx` for
+multi-arch builds.
+
+**One-time setup** — create a builder that supports multi-arch:
+
+```bash
+docker buildx create --name multiarch --use --bootstrap
+```
+
+**Build for a single platform (load locally):**
+
+```bash
+# For Apple Silicon (arm64)
+docker buildx build --platform linux/arm64 --load \
+  -t id-generator:latest .
+
+# For Intel/AMD64
+docker buildx build --platform linux/amd64 --load \
+  -t id-generator:latest .
+```
+
+**Build for both architectures simultaneously:**
+
+```bash
+docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  --build-arg GIT_COMMIT=$(git rev-parse --short HEAD) \
+  --build-arg BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
+  -t openg2p/openg2p-id-generator:develop \
+  --load .
+```
+
+> **Note**: `--load` only works with single-platform builds. For multi-arch,
+> Docker cannot store a manifest list locally — you must push to a registry
+> (see below).
+
+### Publishing to Docker Hub
+
+Normally, images are built and pushed to Docker Hub automatically by the
+[GitHub Actions workflow](../.github/workflows/docker-build.yml) on every
+push. For manual multi-arch publishing (e.g., hotfix releases):
+
+```bash
+# Login to Docker Hub first
+docker login
+
+# Build both architectures and push in one command
+docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  --build-arg GIT_COMMIT=$(git rev-parse --short HEAD) \
+  --build-arg BUILD_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
+  -t openg2p/openg2p-id-generator:<tag> \
+  --push .
+```
+
+Replace `<tag>` with the intended version (e.g., `develop`, `v0.1.0`).
+
 ---
 
 ## 10. Troubleshooting
