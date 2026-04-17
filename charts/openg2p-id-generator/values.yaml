@@ -42,7 +42,7 @@ idGenerator:
     name: ""
   image:
     repository: openg2p/openg2p-id-generator
-    tag: "develop"
+    tag: "1.0"
     pullPolicy: Always
   podSecurityContext:
     enabled: false
