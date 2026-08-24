@@ -115,7 +115,7 @@ helm uninstall id-generator -n trial
 |---|---|---|
 | `idGenerator.enabled` | Deploy the ID Generator | `true` |
 | `idGenerator.replicaCount` | Number of pod replicas | `1` |
-| `idGenerator.image.repository` | Docker image repository | `openg2p/openg2p-id-generator` |
+| `idGenerator.image.repository` | Docker image repository | `registry.gitlab.com/openg2p/platform-services/id-generator/openg2p-id-generator` |
 | `idGenerator.image.tag` | Docker image tag | `develop` |
 | `idGenerator.image.pullPolicy` | Image pull policy | `Always` |
 | `idGenerator.containerPort` | Container port (uvicorn) | `8000` |

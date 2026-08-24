@@ -41,7 +41,7 @@ idGenerator:
     create: false
     name: ""
   image:
-    repository: registry.gitlab.com/openg2p/id-generator/openg2p-id-generator
+    repository: registry.gitlab.com/openg2p/platform-services/id-generator/openg2p-id-generator
     tag: "develop"
     pullPolicy: Always
   podSecurityContext:
